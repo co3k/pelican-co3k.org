@@ -14,7 +14,7 @@ SITEURL = 'http://co3k.org'
 RELATIVE_URLS = True
 
 FEED_ALL_ATOM = 'feeds/blog.atom'
-CATEGORY_FEED_ATOM = 'feeds/category-%s.atom.xml'
+CATEGORY_FEED_ATOM = None
 
 DELETE_OUTPUT_DIRECTORY = True
 
