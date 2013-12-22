@@ -11,10 +11,11 @@
 {% endblock %}
 
 <img alt="A photo of Kousuke Ebihara" src="/images/co3k.jpg" />
+
 <p>Hi, my name is Kousuke Ebihara (海老原昂輔 / a.k.a. co3k). I'm a software developer living in Tokyo, Japan. I was born on April 23, 1988.</p>
 <p>I currently work full-time at <a class="reference external" href="http://tejimaya.com/">Tejimaya, inc. (株式会社手嶋屋)</a>. Of course I take full responsibility for the wording and content of this site.</p>
-<section class="coderwall" data-coderwall-username="ebihara" data-coderwall-orientation="horizontal"></section>
-<script src="http://coderwall.com/javascripts/jquery.coderwall.js"></script>
+<div>
+
 <div class="section" id="involved-open-source-projects-main">
 <h2>Involved open source projects (main)</h2>
 <ul>
@@ -40,6 +41,10 @@
 <li><a class="reference external" href="http://pear.chiaraquartet.net/index.php?package=Chiara_PEAR_Serve">Chiara_PEAR_Server</a></li>
 <li><a class="reference external" href="https://code.google.com/p/touchegg/">Touchégg</a></li>
 </ul>
+<h2>Coderwall Badges</h2>
+<section id="coderwall-badges">
+<p><a href="https://coderwall.com/ebihara">https://coderwall.com/ebihara</a></p>
+</section>
 </div>
 <div class="section" id="published-books">
 <h2>Published books</h2>
@@ -74,5 +79,18 @@
 </ul>
 </div>
 
+<script type="text/javascript">
+function display_coderwall(json)
+{
+    $container = $("#coderwall-badges");
+    var badges = json["data"]["badges"];
+    for (var i = 0; i < badges.length; i++) {
+        $img = $("<img src='' width='50px' height='50px' />");
+        $img.attr("src", badges[i]["badge"]);
+        $container.prepend($img);
+    }
+}
+</script>
+<script src="https://coderwall.com/ebihara.json?callback=display_coderwall"></script>
 </section><!-- /#content -->
 {% endblock content %}

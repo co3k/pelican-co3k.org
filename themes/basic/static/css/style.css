@@ -1,21 +1,27 @@
 @charset "UTF-8";
 
+body {
+  background-color: #fff;
+  color: #333;
+}
+
 body a {
   text-decoration: none;
 }
 
 header#banner {
+    background-color: #34495e;
     text-align: center;
     border-bottom: 1px solid #ccc;
 }
 
 header#banner h1 {
     margin: 0;
-    padding: 0;
+    padding-top: 50px;
 }
 
 header#banner h1 a {
-  color: #000000;
+  color: #ffffff;
   padding: 10px;
   text-decoration: none;
 }
@@ -26,7 +32,8 @@ header#banner h1 a {
 
 #menu li a {
   padding: 0 10px;
-  color: #777;
+  color: #fff;
+  text-shadow: -1px 1px 0 rgba(111, 111, 111, 1);
   text-decoration: none;
 }
 
@@ -47,7 +54,7 @@ span.correct:after {
 }
 
 section#extra {
-  background-color: #eee;
+  background-color: #ecf0f1;
   border-top: 1px solid #ccc;
 }
 
@@ -65,7 +72,12 @@ footer#contentinfo {
   font-size: 10px;
   padding: 10px;
   border-top: 1px solid #000000;
-  background-color: #ddd;
+  background-color: #34495e;
+  color: #fff;
+}
+
+footer#contentinfo a {
+  color: #fff;
 }
 
 del {
@@ -84,7 +96,11 @@ footer.post-info {
 
 h2.entry-title {
     margin-bottom: 0;
-    font-size: 100%;
+}
+
+h2.entry-title a {
+    margin-bottom: 0;
+    color: #000;
 }
 
 .entry-content {
@@ -159,4 +175,9 @@ blockquote, pre {
 
 th, td {
   vertical-align: middle;
+}
+
+#content h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+    text-shadow: -1px 1px 0 rgba(230, 230, 230, 1);
 }
