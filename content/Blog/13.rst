@@ -1,0 +1,21 @@
+===========================================
+VersionControl_Git 0.4.4 をリリースしました
+===========================================
+
+:date: 2011-03-05 20:27:22
+:slug: blog-13
+
+お待たせしました、 VersionControl_Git の新しい安定版をリリースしました。
+
+このバージョンでは、短い形式のコマンドオプションの作成について変更を加えています。 VersionControl_Git は、これまでの "-K=value" 形式のオプションの代わりに、 "-Kvalue" 形式のオプションを生成するようになりました。
+この変更に関する経緯は、この、 farazdagi からの pull request から知ることができます。
+
+    https://github.com/ebihara/VersionControl_Git/pull/9
+
+このリリースに関する情報は、以下の URL から入手することができます。
+
+    http://pear.php.net/package/VersionControl_Git/download/0.4.4
+
+GitHub のタグは以下となっています。
+
+    https://github.com/ebihara/VersionControl_Git/tree/v0.4.4

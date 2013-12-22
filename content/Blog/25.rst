@@ -1,0 +1,180 @@
+=========================================================================================
+勝手に訂正: 「PHP における SQL インジェクション攻撃を行われる脆弱性 (JVNDB-2012-001388)」
+=========================================================================================
+
+:date: 2012-02-15 05:01:16
+:slug: blog-25
+
+.. NOTE::
+    2012/02/16 11:36
+        2012/02/15 05:01 に公開した最初の版に比べ、以下の変更を加えています。
+    
+        * 「影響を受ける PHP のバージョン」についての言及部分をはじめ、「脆弱性の概要」を大幅見直し
+        * 「この脆弱性の原因」の章を追加
+        * 「再現？　したが」の章を追加
+        * なにはともあれ再現は確認できたので「（困り度: 暇なときにでも）なんか手元で再現しない件」の章は全文削除
+
+2012/02/14、あの忌々しいバレンタインの日に JVN iPedia に追加された以下の記事をご存じでしょうか。
+
+    JVNDB-2012-001388 PHP における SQL インジェクション攻撃を行われる脆弱性
+
+    PHP は、環境変数のインポート中の magic_quotes_gpc ディレクティブへの一時的変更を適切に処理しないため、容易に SQL インジェクション攻撃を行われる脆弱性が存在します。 
+
+    -- `JVNDB-2012-001388 - JVN iPedia - 脆弱性対策情報データベース <http://jvndb.jvn.jp/ja/contents/2012/JVNDB-2012-001388.html>`_
+
+これ見てビビりかけたんですが、ビビろうにも意味がよくわからないのと、「影響を受けるシステム」として「PHP 5.3.10 未満」が挙がってるけど「PHP 5.3.10 って CVE-2012-0830 のリモートコード実行の脆弱性のセキュリティフィックスだけじゃなかったっけ？」とか色々ツッコミどころがあって、でも NVD による CVSS スコアは 7.5 とかいうし——と、かなり気になったので追いかけてみたり php-internals で聞いてみたりしたので結果を報告します。
+
+脆弱性の概要
+============
+
+この脆弱性には `CVE-2012-0831 <http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2012-0831>`_ がアサインされています。なんだか CVE の時点で既にいろいろ違うようなのですが、そのあたりは後述します。
+
+とりあえず海老原にわかる範囲でこの脆弱性の概要を説明すると、
+
+.. raw:: html
+
+    <ol class="arabic simple">
+        <li><span class="correct" data-datetime="2011-02-16"><del datetime="2011-02-16T03:59:19+09:00">PHP 5.3.10 <strong>以前</strong> (具体的にどのバージョンまで影響を受けるかは調べてません) の PHP</del><ins datetime="2011-02-16T03:59:19+09:00">PHP 5.3.11-dev (r323016 以降)</ins></span> には、 <tt class="docutils literal">magic_quotes_gpc</tt> が無効になってしまう問題がある。 <a class="reference external" href="http://marc.info/?l=php-internals&amp;m=132923571704914&amp;w=2">Stefan Esser 氏の説明</a> によると、リモートから攻撃者がこの設定値を無効にできるような脆弱性ではないとのこと (そうだろうと思ってましたが)</li>
+        <li><tt class="docutils literal">magic_quotes_gpc</tt> に依存したアプリケーション (つまり自前での SQL Injection 対策がおこなわれていないアプリケーション) を <span class="correct" data-datetime="2011-02-16"><del datetime="2011-02-16T03:59:19+09:00">PHP 5.3.10 以前</del><ins datetime="2011-02-16T03:59:19+09:00">PHP 5.3.11-dev (r323016 以降)</ins></span> で動作させると、この脆弱性の影響を受ける</li>
+    </ol>
+
+ということのようです。
+
+.. raw:: html
+
+    <p><span class="correct" data-datetime="2011-02-16"><ins datetime="2011-02-16T07:37:14+09:00">要するに、 PHP 5.3.11 の開発中のソースコードにのみ存在する問題であり、現在リリースされているすべてのバージョンの PHP にはこの脆弱性は存在しません。元々は Ubuntu が配布している PHP パッケージで見つかったものですが、現在は既に修正されたバージョンが配布されています。</ins></span></p>
+
+    <p><span class="correct" data-datetime="2011-02-16"><del datetime="2011-02-16T07:38:03+09:00">したがって、</del><ins datetime="2011-02-16T07:38:03+09:00">仮にこの脆弱性が存在するバージョンを使用していたとしても、</ins></span> <tt class="docutils literal">magic_quotes_gpc</tt> に依存しないアプリケーションのみを使用している場合は、この脆弱性について気にしなくてよいのでしょう。</p>
+
+    <p>一方で、<span class="correct" data-datetime="2011-02-16"><ins datetime="2011-02-16T07:40:44+09:00">この脆弱性が存在するバージョンを使用しており、</ins></span> <tt class="docutils literal">magic_quotes_gpc</tt> に依存した古いアプリケーションをやむを得ず使用している場合、 SQL Injection 攻撃を受けかねない危険な状態にある可能性が考えられます。その場合、この修正がおこなわれた PHP 5 は本エントリ執筆時点でまだリリースされていないので、 <a class="reference external" href="https://bugs.php.net/bug.php?id=61043">Ondřej Surý 氏の提供するパッチ</a> を適用する必要があるようです。なお、 Ubuntu についてはこの Ondřej Surý 氏製パッチが適用された PHP パッケージが既に配布されている模様です。</p>
+
+    <p><span class="correct" data-datetime="2011-02-16"><ins datetime="2011-02-16T11:33:17+09:00">……というのが php-internals などの情報を元にした説明なのですが、後述の「再現？　したが」の章に示すように、修正前の挙動は問題ではあるけれど、 <tt class="docutils literal">magic_quotes_gpc</tt> が機能しないという問題ですらない可能性も考えられます。 Ubuntu に先行して取り込まれたパッチは、手元で試した限りでは問題なさそうですが、マジッククオートを使用している方は挙動を確認した方がよいかもしれません。</ins></span></p>
+
+本問題に関する正確な情報はほとんど存在しない
+============================================
+
+とりあえず JVN iPedia の「PHP における SQL インジェクション攻撃を行われる脆弱性」は言い過ぎな気がしますし、「PHP 5.3.10 未満」というのは明らかに誤りだし、「第三者により、main/php_variables.c、sapi/cgi/cgi_main.c、および sapi/fpm/fpm/fpm_main.c に関連する巧妙に細工された要求を介して、容易に SQL インジェクション攻撃を行われる可能性があります」もたぶん誤った見解に基づく文章だろうし、誤解を与えかねないと思います。
+
+が、これに関しては JVN iPedia が悪いわけではありません。 JVN iPedia のこの記事の元になっているのは `National Vulnerability Database (NVD) National Vulnerability Database (CVE-2012-0831) <http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2012-0831>`_ で、 CVSS スコアや脆弱性分類なんかもここから来ています。 NVD の Overview の文章は CVE のまんまで、以下に引用する通りです。
+
+    PHP before 5.3.10 does not properly perform a temporary change to the magic_quotes_gpc directive during the importing of environment variables, which makes it easier for remote attackers to conduct SQL injection attacks via a crafted request, related to main/php_variables.c, sapi/cgi/cgi_main.c, and sapi/fpm/fpm/fpm_main.c. 
+
+    -- `CVE - CVE-2012-0831 (under review) <http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2012-0831>`_
+
+んでもってこの CVE の説明ってよくわからないんだけど？　PHP before 5.3.10 ってホントに？　という疑問を php-internal (PHP の開発メーリングリスト) にぶつけたところ、パッチ作成者の Ondřej Surý 氏から返答があり、
+
+    That's some noise on the wire...  This fix was never part of PHP 5.3.10
+
+    -- `'[PHP-DEV] Re: About CVE-2012-0831 (magic_quotes_gpc remote disable vulnerability?)' - MARC <http://marc.info/?l=php-internals&m=132922831702033&w=2>`_
+
+えー……ｗ
+
+その後 Stefan Esser 氏から指摘を頂戴したりし、先の「脆弱性の概要」で示した見解に至りました。
+
+ということで CVE の情報も NVD の情報もアテにならず、 php-internals のやりとり ( http://marc.info/?t=132922477400003&r=1&w=2 のスレッドと、切れてしまった http://marc.info/?t=132922834400003&r=1&w=2 のスレッド) と元々のはじまりである `Bug #930115 in php5 (Ubuntu): “php5 5.3.2-1ubuntu4.13 introduced regression in magic_quotes_gpc” <https://bugs.launchpad.net/ubuntu/+source/php5/+bug/930115>`_ のバグレポートくらいしか参考になるものがないという状況です。
+
+magic_quotes_gpc に依存しているアプリはこの脆弱性に関わらずそろそろ排除するべき
+===============================================================================
+
+PHP 5.3 で ``E_DEPRECATED`` レベルのエラーになるようになりましたし、そもそもいまどき ``magic_quotes_gpc`` に依存したコードを書くような人もいないとは思いますが、かなり古いアプリには ``magic_quotes_gpc`` に依存しているものが残っているかもしれません。
+
+この脆弱性の影響を受けるような ``magic_quotes_gpc`` 依存のアプリをうっかり使用している場合に、とりあえず ``magic_quotes_gpc`` による fail-safe が意図通り機能する状態に直すことで SQL Injection に対策するべく、先述のパッチを適用するのは ( ``magic_quotes_gpc`` で本当に SQL Injection 対策になる状況であれば) 悪くないかもしれません。
+
+ただし、 ``magic_quotes_gpc`` に依存するようなスクリプトは本質的には脆弱 ( `"a script which depends on magic_quotes_gpc is intrinsically vulnerable" <http://marc.info/?l=php-internals&m=132923433604360&w=2>`_ ) であると海老原は考えます。 SQL のエスケープを ``magic_quotes_gpc`` に頼っているからといってそれが単にセキュアでないとは言えない ( `"it is simply not true that scripts relying on magic_quotes_gpc for SQL escaping are insecure" <http://marc.info/?l=php-internals&m=132923571704914&w=2>`_ ) という意見もあると思いますが、まあ言いたいことはわかるんですけど、問題の起きない環境って相当限定されませんか…… (このあたりは `T.Teradaの日記 - PHPのmagic_quotes_gpcをOnにすべきでない理由 <http://d.hatena.ne.jp/teracc/20070125#1169722643>`_ にまとまっています)
+
+さて、 `'Re: [PHP-DEV] About CVE-2012-0831 (magic_quotes_gpc remote disable vulnerability?)' - MARC <http://marc.info/?l=php-internals&m=132923571704914&w=2>`_ の Stefan Esser 氏のメールにある追伸には、
+
+    PS: and all that old code will be vulnerable once the server admin updates to PHP 5.4
+    (拙訳: そういう古いコードは、サーバ管理者が PHP 5.4 にアップデートすると再び脆弱になるだろう)
+
+    -- `'Re: [PHP-DEV] About CVE-2012-0831 (magic_quotes_gpc remote disable vulnerability?)' - MARC <http://marc.info/?l=php-internals&m=132923571704914&w=2>`_
+
+とあります。
+
+ご存じの方もいらっしゃるでしょうが、 PHP 5.4 でマジッククオートは削除される予定です ( http://svn.php.net/viewvc/php/php-src/tags/php_5_4_0RC7/NEWS?view=markup#l370 )。スクリプトでの ``set_magic_quotes_runtime()`` のコールは ``E_CORE_ERROR`` レベルのエラーとなるようなので嫌でも気がつくでしょうが、この関数コールすらないスクリプト ( ``magic_quotes_gpc`` が有効な世界を当たり前のように受け入れていたらしい縄文時代のスクリプト) の場合は、 PHP 5.4 に上げた途端に脆弱となる可能性があります。
+
+ということで、 PHP 5.4 が普及したときに備えて、この脆弱性をいいきっかけとして、 ``magic_quotes_gpc`` 依存のアプリを使っていないかどうかの点検と、可能ならば根本的な SQL Injection 対策を施すことを強く推奨します。
+
+この脆弱性の原因 (2012/02/16 追加)
+==================================
+
+原因は PHP 5.3.11-dev に加わった http://svn.php.net/viewvc?view=revision&revision=323016 のコミットです。このコミットは PHP 5.3.10 以前、つまりリリースされている PHP には含まれていません。
+
+``main/php_variables.c`` と ``sapi/cgi/cgi_main.c`` 、 ``sapi/fpm/fpm/fpm_main.c`` に変更が加わってますが、変更内容はいずれも同じようなので ``main/php_variables.c`` の差分を `Extending and Embedding PHP <http://www.amazon.com/Extending-Embedding-PHP-Sara-Golemon/dp/067232704X>`_ を読みつつ必死こいて理解してみました。
+
+差分付近のコメントには "turn off magic_quotes while importing environment variables" (拙訳: 環境変数のインポート中、マジッククオートを無効にする) とあります。マジッククオートがどのタイミングで発動するのかは僕はわからないのですが、切っておかないと何か不都合があるのでしょうね。
+
+問題なのはこのコミットからおこなわれるようになった一時的なマジッククオートの変更方法で、 ``PG(magic_quotes_gpc)`` に変更を加えるのではなく ``zend_alter_ini_entry_ex()`` をコールする方式に切り替えるようにしたのですが、元の設定値に戻す処理が ``PG(magic_quotes_gpc)`` に対しておこなわれたままなので、 ``EG(ini_directives)`` 構造体の保持する値と ``PG(magic_quotes_gpc)`` の値に食い違いが生じる ( ``EG(ini_directives)`` の保持する ``magic_quotes_gpc`` の値は必ず ``Off`` になったまま) ということのようです。
+
+そこで、 https://bugs.php.net/patch-display.php?bug_id=61043&patch=magic_quotes_gpc-regression&revision=latest のパッチでは、元の設定値に戻す処理でも ``zend_alter_ini_entry_ex()`` を用いるような変更が提案されています。
+
+ということで原因もわかってすっきりですね！　よかったですね！
+
+……ですが、ちょっとわからないことがあります。
+
+コードをひととおり検索してみた限りでは、 ``magic_quotes_gpc`` の参照に関しては ``PG(magic_quotes_gpc)`` が使われていて、 ``EG(ini_directives)`` 構造体の保持する値を返すような各種関数コールによって参照している場面はなさそうなのですよね。
+
+これなら、最後に ``PG(magic_quotes_gpc)`` に設定値を戻しているのであれば問題は生じないように思えるのですが……というか、 ``zend_alter_ini_entry_ex()`` を用いて更新しているいまのコードのほうがむしろ正しく動かないような気がするのですが……。それとも、僕が読み取れなかっただけで、 ``zend_alter_ini_entry_ex()`` は ``PG()`` のほうも変更してくれていたりするのでしょうか？
+
+再現？　したが (2012/02/16 追加)
+================================
+
+よくわからなくなってきたのと、最新のスナップショットでは再現するらしいことがわかってきたので、ここで挙動を確認してみます。
+
+ということで Feb 16, 2012 00:30 UTC 時点の PHP 5.3 のスナップショットを使っていろいろ見てみましょう。
+
+まず、 https://bugs.launchpad.net/ubuntu/+source/php5/+bug/930115 で示されている再現手順をなぞってみます::
+
+    $ echo 'magic_quotes_gpc=On' > /tmp/php.ini && php-5.3-201202160030 -c /tmp/php.ini -r 'var_dump(phpversion(), ini_get("magic_quotes_gpc"));'
+    string(10) "5.3.11-dev"
+    string(1) "0"
+
+おおおおおおお！ http://marc.info/?l=php-internals&m=132922462700684&w=2 で示した結果と違ってちゃんと再現してる！
+
+では ``magic_quotes_gpc`` が機能するかどうかを確認してみます。確認には https://gist.github.com/1840714 のスクリプトを使用しました::
+
+    $ wget -q "http://localhost:8080/phpinfo.php" -O - | grep "Loaded Configuration File"
+    <tr><td class="e">Loaded Configuration File </td><td class="v">/private/tmp/php.ini </td></tr>
+
+    $ cat /private/tmp/php.ini
+    magic_quotes_gpc=On
+
+    $ wget -q "http://localhost:8080/cve-2012-0831.php?a='" -O -
+    PHP Version: 5.3.11-dev
+    magic_quotes_gpc: 0
+    $_GET['a']: \'
+
+えっ ``magic_quotes_gpc`` がこの CVE-2012-0831 の脆弱性によって ``Off`` になってしまったのにちゃんとマジッククオートが機能してる！？
+
+次に、 https://bugs.php.net/patch-display.php?bug_id=61043&patch=magic_quotes_gpc-regression&revision=latest のパッチを当てた状態で、同じことをやってみます。まず ``ini_get()`` の結果を見てみます::
+
+    $ echo 'magic_quotes_gpc=On' > /tmp/php.ini && php-5.3-201202160030-patched -c /tmp/php.ini -r 'var_dump(phpversion(), ini_get("magic_quotes_gpc"));'
+    string(10) "5.3.11-dev"
+    string(1) "1"
+
+こちらはちゃんと直っているように見えますね。
+
+では、実際に ``magic_quotes_gpc`` が機能するかどうかを見てみると……::
+
+    $ wget -q "http://localhost:8080/cve-2012-0831.php?a='" -O -
+    PHP Version: 5.3.11-dev
+    magic_quotes_gpc: 1
+    $_GET['a']: \'
+
+あ、ちゃんと直ってるな。んーなるほど、ということは、
+
+* マジッククオートが機能しているのに ``ini_get('magic_quotes_gpc')`` は「マジッククオートは有効じゃない」と報告していたということになる
+* ``zend_alter_ini_entry_ex()`` と ``PG()`` の関係は海老原にはよくわからないが、 ``zend_alter_ini_entry_ex()`` の値を変更するぶんにはすべて意図通り動くらしい
+
+ということなんでしょうかね。
+
+まあ PHP-5.3.11-dev でしか発生しなくて、なおかつ Ubuntu ではこのパッチによってもう修正済みだろうということが確認できたのでまあ充分でしょう。このくらいにしておきますかね……
+
+（困り度: 暇なときにでも）なんか手元で再現しない件 (2012/02/16 削除)
+====================================================================
+
+.. raw:: html
+
+    <p><del><a class="reference external" href="http://marc.info/?l=php-internals&amp;m=132922462700684&amp;w=2">http://marc.info/?l=php-internals&amp;m=132922462700684&amp;w=2</a> に投稿したように、 PHP 5.3.7 を除く手元の PHP 5.3 で <a class="reference external" href="https://bugs.launchpad.net/ubuntu/+source/php5/+bug/930115">https://bugs.launchpad.net/ubuntu/+source/php5/+bug/930115</a> に示されている確認手順を試してみたんですが、どのバージョンにおいても再現が確認できませんでした。</del></p>
+    <p><del>たぶん海老原がなにかを間違えている可能性が高いと思うのですが、「あ、俺、この問題あんまり困らないわ」というのがわかった瞬間からやる気が抜けてしまい、ちゃんと調べていません。</del></p>
+    <p><del>んー、なんでですかねー。</del></p>

@@ -1,0 +1,22 @@
+=========================================
+VersionControl_Git を PEAR に公開しました
+=========================================
+
+:date: 2010-02-06 07:15:29
+:slug: blog-3
+
+OpenPNE 3 でゴニョゴニョやっていたなかで、副産物としていつの間にか出来上がっていた VersionControl_Git が PEAR の採択プロセスを無事通過し(http://pear.php.net/pepr/pepr-proposal-show.php?id=625) 、晴れて PEAR パッケージとしてリリースできるようになりました。応援していただいた方々、ありがとうございます。
+
+早速 0.4.2 をリリースしたので興味のある方はお試しください！::
+
+    $ pear install VersionControl_Git-0.4.2
+
+パッケージのページは以下です。
+    http://pear.php.net/package/VersionControl_Git
+
+ソースコードは GitHub でホスティングしています。 fork、 pull request 大歓迎です！
+    http://github.com/ebihara/VersionControl_Git
+
+
+せっかく PEAR Developer という立場になれたわけなので、 OpenPNE という小さくない OSS を抱えつつというところではありますが、これをきっかけに PEAR に対して積極的に貢献するということを目指して頑張りたいと思います。
+Openpear や pearhub というようなサイトの存在は重要ですし、よりオープンな PEAR リポジトリの出現という動きが起きたことは非情に素晴らしいことだと思いますが、その一方で PEAR 自体をしっかり盛り上げていくということも大切なことだと僕は考えているので、そういうところで支援などできたらしたいですねー。

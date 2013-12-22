@@ -1,0 +1,293 @@
+============================================================================
+Symfony2 の力を借りたセキュア開発 (Symfony Advent Calender 2011 JP - 18日目)
+============================================================================
+
+:date: 2011-12-18 00:29:06
+:slug: blog-22
+
+Symfony Advent Calender 2011 JP 18日目です。前回は `@hidenorigoto <https://twitter.com/#!/hidenorigoto>`_ さんでした。リダイレクト・インターセプションは 2.0.0 が出る前のどこかのタイミングでデフォルトでオフになって焦った記憶があります。投稿処理などをしたタイミングでプロファイラを見る機会が多いので、有効にしておくと便利ですよね。
+
+さて、 18 日目となるこのエントリでは、セキュリティの観点から Symfony2 の機能について簡単に観ていくことにします（本当はしっかり見ていくつもりだったのですが、時間的制約から急遽簡単になりました！）。
+
+ここでは Symfony Standard Edition v2.0.7 のインストール直後の構成、依存ライブラリを前提として解説します。また、 Web アプリケーションセキュリティに関する基本的な知識を持っていることを前提として説明します。大ざっぱに言うと、「徳丸本」を斜め読みしたくらいの知識は必要かなと思います。
+
+HTML と JavaScript の生成
+=========================
+
+``http://app.example.com/demo/hello/Alice`` に GET した場合に表示される、 ``src/Acme/DemoBundle/Resources/views/Demo/hello.html.twig`` を見てみましょう::
+
+    {% extends "AcmeDemoBundle::layout.html.twig" %}
+
+    {% block title "Hello " ~ name %}
+
+    {% block content %}
+        <h1>Hello {{ name }}!</h1>
+    {% endblock %}
+
+    {% set code = code(_self) %}
+
+変数 ``name`` に、 URL 部品として与えられた ``"Alice"`` が格納されており、この変数を生成する HTML に埋め込んで出力しています。
+
+``/demo/hello/Alice<xmp>`` に対して GET すると、 ``h1`` 要素の内容は以下のように出力されます::
+
+    <h1>Hello Alice&lt;xmp&gt;!</h1>
+
+``h1`` 要素の内容に埋め込まれた変数が自動的に HTML エスケープされていることがわかります。
+
+Twig テンプレートは PHP ファイルとしてキャッシュされ、実際にはキャッシュファイルを評価した結果を出力します。なので、 Twig テンプレートが実際にはなにをおこなっているかを知るには、キャッシュファイルを覗いてみるのが手っ取り早いです。
+
+先の ``h1`` 要素の出力部分は以下のようなコードになっています::
+
+    // line 6
+    echo "    <h1>Hello ";
+    echo twig_escape_filter($this->env, $this->getContext($context, "name"), "html", null, true);
+    echo "!</h1>
+
+``twig_escape_filter()`` 関数は `vendor/twig/lib/Twig/Extension/Core.php <https://github.com/fabpot/Twig/blob/v1.4.0/lib/Twig/Extension/Core.php#L471>`_ で定義されています。
+
+第 2 引数がエスケープ対象の文字列、第 3 引数がエスケープ戦略名、第 4 引数が出力の文字エンコーディングであることがわかります。文字エンコーディングが今回のように ``null`` として指定されなかった場合、第 1 引数で指定した環境設定に応じた文字エンコーディングが設定されます（Symfony Standard Edition インストール時点の設定では UTF-8）。内部的には PHP 標準関数である ``htmlspecialchars()`` が HTML エスケープに使われます（ ``htmlspecialchars()`` の第 3 引数には ``ENT_QUOTES | ENT_SUBSTITUTE`` が指定されています）。
+
+エスケープ戦略には ``"html"`` のほかに ``"js"`` がサポートされています。この挙動を確認してみましょう。
+
+HTML 文書中に JavaScript を動的に生成する場合（海老原個人としては JavaScript を動的に生成する状況をなるべく控えるようにしていますが）、値が JavaScript の文脈にあることを意識しないと XSS 攻撃に対して脆弱になることがあります。脆弱な例を以下に示します::
+
+    {% block content %}
+        <h1>Hello {{ name }}!</h1>
+        <p><a href="#" onclick="void('{{ name }}'); return false;">Hello</a></p>
+        <p>このコードは脆弱です。</p>
+    {% endblock %}
+
+この例では、 ``/demo/hello/%27%29;alert%28%27XSS`` に対して GET し、 ``name`` 変数の値が ``');alert('XSS`` となるようにした上で、 ``a`` 要素で表されるリンクをクリックすると、当然、 ``alert('XSS');`` が実行されます。
+
+この時の出力は以下のようになっています::
+
+    <p><a href="#" onclick="void('&#039;);alert(&#039;XSS'); return false;">Hello</a></p>
+
+Twig で明示的なエスケープをおこなうには、 ``escape`` フィルタ (別名の ``e`` フィルタでもよい) を用います。このフィルタの第 1 引数はエスケープ戦略なので、以下のように ``"js"`` を指定してみましょう::
+
+    <p><a href="#" onclick="void('{{ name | escape('js') }}'); return false;">Hello</a></p>
+
+これにより生成される出力は以下のようになります::
+
+    <p><a href="#" onclick="void('\x27\x29\x3balert\x28\x27XSS'); return false;">Hello</a></p>
+
+英数字以外の文字をすべて `Unicode エスケープシーケンス <http://wiki.ecmascript.org/doku.php?id=spec:chapter_6_lexical_structure&s=unicode#unicode_escapes>`_ に置換する、つまり過剰にエスケープすることで JavaScript の文字列表記として適正になるような出力をおこなおうとしていることがわかります （なお、 Twig では ``\xHH`` または ``\uHHHH`` への置換がおこなわれます）。
+
+過剰エスケープのアプローチを採っていることで、 HTML としてのエスケープを必要としない（が、 ``</`` のエスケープは必要となる） ``script`` 要素中に動的な値を埋め込む際にも、このエスケープ戦略を選択できることになります（繰り返しますが、海老原個人としては動的な JavaScript の生成は避けるよう心がけています）::
+
+    <script type="text/javascript">
+        void('{{ name | escape('js') }}');
+    </script>
+
+ちなみに、 symfony 1.4 で提供されていた `esc_js_no_entities() <http://trac.symfony-project.org/browser/branches/1.4/lib/helper/EscapingHelper.php#L104>`_ ヘルパー関数は、 ``\`` や ``"`` などの JavaScript として意味のある文字に ``\`` を前置するエスケープをおこなっていました。つまり、以下のようなコードを書いた場合に脆弱となってしまう（GET パラメータに ``</script><script>alert("XSS");</script>`` を指定することで XSS になる）ため、 ``script`` 要素の内容に動的な値を埋め込むための標準的な手法が存在しないような状況になっていました::
+
+    <script type="text/javascript">
+        void('<?php echo esc_js_no_entities($name->getRawValue()); ?>');  // もちろんここで HTML としてのエスケープをおこなうのは間違い
+    </script>
+
+Symfony2 ではこの状況が改善されたということですね。非常に喜ばしいことです。しかし海老原個人としては動的な JavaScript の生成は（ｒｙ
+
+SQL の生成
+==========
+
+Symfony2 Standard Edition では、標準の DBAL / ORM として Doctrine 2 を使用しています。これらのライブラリを使用して安全に SQL の構築をおこなう手順について見ていきましょう。
+
+まず、 Doctrine 2 を使ったが SQL Injection Attack に対して脆弱となったコードを示します::
+
+    /**
+     * @Route("/store/show/{id}")
+     */
+    public function showAction($id)
+    {
+        $repository = $this->getDoctrine()
+            ->getRepository('AcmeStoreBundle:Product');
+
+        $query = $repository->createQueryBuilder('p')
+            ->where('p.id = '.$id)
+            ->getQuery();
+
+        // レコードが存在しない場合はここで Doctrine\ORM\NoResultException が throw される
+        $product = $query->getSingleResult();
+
+        // *snip*
+    }
+
+この例では、リクエストに含まれる ``{id}`` の値と一致する値を ``id`` フィールドに持つ ``AcmeStoreBundle:Product`` のレコードを、 DQL を実行することにより取得しています。ここで、 ``AcmeStoreBundle:Product.id`` は正の整数であることが期待されていて、 DB にもその要件に合わないデータは存在しないものとします。
+
+``/store/show/1`` に対して GET し、このアクションを実行すると、 DB から ``id`` の値が 1 であるレコードを検索する SQL が発行され、そのレコードを表すクラスインスタンスが ``$product`` に代入されます。このときに発行される SQL 文は以下のようになります::
+
+    SELECT p0_.id AS id0, p0_.name AS name1, p0_.price AS price2, p0_.description AS description3 FROM Product p0_ WHERE p0_.id = 1;
+
+しかし、 ``/store/show/0%20OR%200=0`` という ``id`` フィールドとしてあり得ない値（1 以上の integer でなく、該当するデータも存在しない）を入力した場合にも、 ``$product`` にはあるレコードに関する情報が格納されてしまいます。このときに発行される SQL 文は以下です::
+
+    SELECT p0_.id AS id0, p0_.name AS name1, p0_.price AS price2, p0_.description AS description3 FROM Product p0_ WHERE p0_.id = 0 OR 0 = 0;
+
+このように、 SQL を構築する場合はもちろん、 DQL を使っているからといっても、誤った使い方をしていればやはり脆弱なコードを生み出すことに繋がります。
+
+Doctrine 2 において、自分で SQL / DQL の構築をおこなう場面には、たとえば以下のようなものがあります。
+
+* ``Doctrine\ORM\EntityManager::createQuery()`` による DQL 構築
+* ``Doctrine\DBAL\Query\QueryBuilder`` による DQL 構築
+* ``Doctrine\ORM\Query::setDQL()`` による DQL 構築（バインド機構に対応しておらず、固定の DQL を文字列でセットするメソッドなので注意が必要）
+* ``Doctrine\ORM\NativeQuery`` による SQL 構築
+* ``Doctrine\ORM\NativeQuery::setSQL()`` による SQL 構築（バインド機構に対応しておらず、固定の DQL を文字列でセットするメソッドなので注意が必要）
+
+これらのメソッド群にはバインド機構が利用できるものがあるので、それを用いていれば SQL / DQL の構文が意図せずに変更されることを防げます（が、バインド機構の実装方式などによってはそう言い切れない場合があります。このあたりについては調べ切れていません）。
+
+たとえば、 ``Doctrine\DBAL\Query\QueryBuilder`` の場合は以下のようにしてバインド機構を利用できます::
+
+    $query = $repository->createQueryBuilder('p')
+        ->where('p.id = :id')
+        ->setParameter('id', $id)
+        ->getQuery();
+
+バインド機構を使わず、動的に DQL や SQL を構築する（たとえばテーブル名などの識別子を状況に応じて動的に切り替えるなど）必要のある場面が出てくるかもしれません。そのような場合、 Doctrine の提供する以下のメソッドを利用した、 DBMS の種類に応じたエスケープ処理を実施してください。
+
+* ``Doctrine\DBAL\Connection::quoteIdentifier()`` : 識別子のクオート
+* ``Doctrine\DBAL\Connection::quote()`` : 値のクオート
+
+ただし、バインド機構が利用できないような状況はセキュリティに関する充分な注意を要するので、やむを得ない場合を除いて控えるようにするべきです。
+
+CSRF 対策
+=========
+
+Symfony では、 CSRF 対策は Form コンポーネントに組み込まれています。ウェブアプリケーションにおいて、攻撃者にリクエストを強要された際に実害が出やすいのはデータ保存部分であり、保存されるデータの基となる情報はフォームから受け取る場合がほとんどでしょうから、 CSRF 対策が Form コンポーネントに含まれているのも納得のいく話です。
+
+CSRF 対策用トークンを格納するフィールドは、フォーム作成時に自動的に追加されます（正確には、 ``Symfony\Component\Form\Form::__constructor()`` のタイミングで ``Symfony\Component\Form\Form::setData()`` が呼ばれ、そこで発行されるイベントを契機にフィールドが追加される）。入力データに含まれるトークンの妥当性チェックも、 Form コンポーネントの流儀に則って自動的におこなわれます。
+
+つまり、 Symfony において CSRF 対策をするには、フォームのレンダリングや入力データの処理に Form コンポーネントを使用するようアプリ全体で統一しておけばよいということになります。 XSS 対策や SQL Injection 対策のように、「正しい HTML / JavaScript を構築する」、「正しい SQL を構築する」という「当たり前」のことをしていればほとんど充分であるようなものと違い、 CSRF 対策は明らかに「セキュリティのための対策」となってしまいます。そのような種類の、おそらく多くの人が退屈に感じるであろう「セキュリティのためだけの対策」をフレームワーク側で吸収してくれているのは非常にありがたいことですね。
+
+CSRF 対策は、フォームの入力データに含まれるトークンを確認することでおこなわれています。このトークンの生成は、このフォームフィールドの表現からは分離されていて、しかも DI コンテナによって生成処理をおこなうクラスを変更することができます（こんなところでも「Symfony2 らしさ」を垣間見ることができますね）。デフォルトでは ``SessionCsrfProvider`` によって生成されます。生成部分のコードは以下 (基底クラスの ``DefaultCsrfProvider::generateCsrfToken()`` ) です::
+
+    function generateCsrfToken($intention)
+    {
+        return sha1($this->secret.$intention.$this->getSessionId());
+    }
+
+``$secret`` は、アプリ全体のシークレットで、 ``app/config/parameters.ini`` や ``app/config/config.yml`` で設定されるものです。 ``$intention`` はフォームのオプションとして設定できる値で、他の場所とは生成される CSRF トークンを分けたい場合に使用するようです（デフォルトでは ``unknown`` で、ログインフォームでは ``authenticate`` が使われている模様）。これらの値とセッション ID を結合した文字列の SHA-1 ハッシュ値が CSRF トークンとして使われることになります。CSRF 対策には、攻撃者がリクエストを推測して強要できないよう、リクエストに秘密情報を含めることを求めればよい（ただし自動送信される Cookie は NG）ので、セッション ID のみを含めればよいのですが、 Symfony では symfony 1 のころからこのようなトークンの生成をおこなっています。 `どうしてかなと考えてみた結果を以前ブログエントリに書いた <http://co3k.org/blog/18>`_ ので、興味がある方はこちらもご覧ください。
+
+しかし、世の中にはフォームを介さないデータ保存処理も存在します。そういうときどうすればいいのかちょっと探してみましたが見つかりませんでした。
+
+symfony 1 では、そういう場合にもフォームの機能を使用して対処しました。
+
+まず、ビューのコード例を示します。リクエストパラメータに CSRF 対策用トークンを含んだリンクを生成します::
+
+    <?php $form = new BaseForm(); ?>
+    <?php echo link_to('Delete', 'example_delete', array($form->getCSRFFieldName() => $form->getCSRFToken())) ?>">
+
+そして、アクションでは以下のように sfWebRequest::checkCSRFProtection() をコールするだけでした::
+
+    public function funciton executeExampleDelete(sfWebRequest $request)
+    {
+        // トークンの妥当性チェックに引っかかった場合、 sfValidatorErrorSchema が throw される
+        $request->checkCSRFProtection();
+
+        // something to do ...
+    }
+
+Symfony2 でも似たような対応をおこなうのがいいかもしれません。少し考えてみましょう。
+
+空のフォームは以下のようにして生成することができます::
+
+    $form = $this->createFormBuilder(null)->getForm();
+    $form->bindRequest($request);
+    if (!$form->isValid()) {
+        throw new \RuntimeException('...');
+    }
+
+CSRF トークン用のフィールド単体で生成したい場合は以下のようにすればよいです::
+
+    $form = $this->createForm($this->get('form.type.csrf'));
+    $form->bind($request->get($form->getName()));
+    if (!$form->isValid()) {
+        throw new \RuntimeException('...');
+    }
+
+自分で CSRF プロバイダを使うのも手ではありますが、うーんなんか嫌な感じですね::
+
+    $provider = $this->get('form.csrf_provider');
+    $intention = __FILE__;
+    $token = $provider->generateCsrfToken($intention);  // pass this value to view
+    if (!$provider->isCsrfTokenValid($intention, $request->get('csrf_token')))
+    {
+        throw new \RuntimeException('...');
+    }
+
+パスワード
+==========
+
+パスワードのエンコーディング方式についても見てみましょう。パスワードは、その漏洩時の被害が甚大であることから、一般に、平文でない形で保管するよう気を配られているはずですね。
+
+Symfony2 では、パスワードのエンコーディング処理についての機能がフレームワークに組み込まれています。
+
+たとえば、 security.yml で以下の設定をしたときのことを考えます::
+
+    encoders:
+        Symfony\Component\Security\Core\User\User:
+            algorithm: sha512
+            iterations: 1000
+
+この設定では、 SHA-512 を 1000 回適用した結果をパスワードとして保管します。これはいわゆる Password Stretching (Key Stretching)、もしくは単に Stretching と呼ばれるものです。詳しくは参考文献をあたっていただきたいのですが、要は、通常高速におこなわれるハッシュ値の計算にかかるコストを増大させることで、総当たり攻撃への耐性を高めようというものです。あくまで単純計算ですが、総当たり攻撃のコストは iterations の回数倍増加することになります。
+
+ちなみに、 Symfony2 Standard Edition のデフォルト設定では、 iterations の値は 5000 となっています。現実のアプリケーションにおいて、どの程度の値を採用するべきかはなかなか難しいところです。いたずらに回数を増やすと、ハッシュ値の計算にかかるコストが増大します。これは総当たり攻撃のコストが増えると同時に、ログイン処理のコストも増大させることになります。このログイン処理のコストの増大が DoS 攻撃に利用されてしまう可能性も否定できませんし、そもそもログイン操作でユーザが待たされるようになります。このあたりの判断基準ってなにかあるかなと OWASP を探してみましたが、そもそも Stretching 自体への言及がありませんでした。
+
+また、 Symfony2 では、 Salt の付加もおこなっています。 Salt と呼ばれる文字列をパスワードに付加することで文字列長を増やし、解析への耐性を高めています。
+
+Salt は User オブジェクトの getSalt() によって提供することになっていて、ここから得られる文字列をパスワードに付加し、エンコーディングの処理がおこなわれます。しかし、標準で用意されている User クラスである ``Symfony\Component\Security\Core\User\User`` では、 ``getSalt()`` は ``null`` を返しています。現実のアプリケーションで ``Symfony\Component\Security\Core\User\User`` を使用する場合、またはこのクラスの実装を参考に独自のユーザクラスを作る場合は、この点に気をつけてください。
+
+参考になるものはないかと `FOSUserBundle の実装 <https://github.com/FriendsOfSymfony/FOSUserBundle/blob/master/Model/User.php>`_ を確認したんですが、単純に DB に生成した Salt （ユーザ毎に異なる）を突っ込んで、 ``getSalt()`` はそれを返しているだけですね。 Salt はコンストラクタで生成しています::
+
+    public function __construct()
+    {
+        $this->salt = base_convert(sha1(uniqid(mt_rand(), true)), 16, 36);
+
+        // *snip*
+    }
+
+おっと、 SHA-1 ハッシュ値を base_convert() で 16 進数から 36 進数に変換していますね。気になるほどではありませんが、文字種が増える代わりに文字数が減ってしまいます。ユーザのパスワード文字列は 16 進数で用いられる文字しか含まれないとは限らないわけですから、ここで文字種を（しかもアルファベットを）増やしたところでさほど意味はないように思います。総当たりで Salt が暴かれるのを防ぐ対策ではないでしょう。単に基数変換しているだけですから、文字種が増えたところで総当たりの試行回数は変わらないように思います。だいたい、パスワードのハッシュ値が漏れている状況を守るための Salt なので、そのような状況では DB に保存している Salt も当然漏れている可能性が高いです。 Web サーバに Salt を保存している場合も同様で、 Salt については攻撃者にばれている前提で考えるべきです。なので、ちょっとここのコードの意図が読めませんでした。
+
+あと、手前味噌ですが、個人的にちまちま作っている `Societo <http://societo.org/>`_ というソフトウェアで使用している `Salt の生成方式 <https://github.com/societo/SocietoAuthenticationBundle/blob/master/Entity/Account.php#L146>`_ も示します::
+
+    public function getSalt()
+    {
+        return sha1($this->getMember()->getId().$this->secret);
+    }
+
+アプリ全体の secret と、ユーザを識別するための ID を文字列結合しただけの文字列に SHA-1 ハッシュ関数をかけたものを使用しています。 Salt 自身は DB には保存しません。SQL Injection 攻撃を喰らってパスワードのハッシュ値が漏洩しても、 Salt は一緒に漏洩しないというメリットがあるにはありますが、前述の通りアテにしない方がよいと思います。
+
+ユーザ ID を結合しているのは、同じパスワードを使っていたとしても、ユーザ毎に生成されるハッシュ値を異なるものにするのが目的です。 Salt はパスワードの文字列長を増やすのが目的ですが、ユーザ ID と secret の組み合わせでは充分な長さが確保できない可能性がある（secret の長さに依存してしまう）ため、 SHA-1 ハッシュ値を使用することにしました。
+
+ロギング
+========
+
+ロギングはセキュリティの面からも非常に重要です。アクセスの正否や内容のロギングをおこなうことで、なんらかの事件が発生した場合の原因調査や、事件の予兆の把握、ユーザの行動の正当性の保証などがおこなえることになります。特に、ログイン機能を有するウェブアプリケーションはその性質上、「誰が」「どのような行動をとったか」に関する詳細な情報を有していますから、その情報のログは非常に有用なものになります。
+
+Symfony2 は `monolog <https://github.com/Seldaek/monolog>`_ を用いた強力なロギングの機能を提供しています。 Cookbook に `Symfony から monolog を使用する方法 <http://symfony.com/doc/current/cookbook/logging/monolog.html>`_ についてまとまっているので参考にしてください。
+
+monolog は、ログローテーション、 syslog へのロギング、メールによる通知、エラーレベルの制御、メモリ使用量の監視など、実に様々な機能を提供しています。
+
+まとめ
+======
+
+駆け足でセキュリティに関する以下の機能について説明しました。
+
+* HTML と JavaScript の生成
+* SQL の生成
+* CSRF 対策
+* パスワード
+* ロギング
+
+ここで説明したことはほんの一部です。読んでいただいてわかるように、まだ調査が不完全なところもあるので、もう一度ちゃんとまとめなおしたいですね。タイトルが大仰なだけに内容の薄さが際だってちょっと＞＜
+
+本当は認証まわりやアクセス制御あたりにも触れたかったのですが、 `ボルボロス <http://dic.nicovideo.jp/a/%E3%83%9C%E3%83%AB%E3%83%9C%E3%83%AD%E3%82%B9>`_ が倒せなかったせいで、そのあたりについて書く時間がなくなってしまいました（後半が急に尻切れトンボになったのも奴のせいです！）。またの機会に詳しく触れていきたいと思います。
+
+さて、明日は `@77web <https://twitter.com/#!/77web>`_ さんの番です！
+
+参考文献
+========
+
+* `Book - Symfony <http://symfony.com/doc/current/book/index.html>`_
+* `Cookbook - Symfony <http://symfony.com/doc/current/cookbook/index.html>`_
+* `情報処理推進機構：情報セキュリティ：脆弱性対策：安全なウェブサイトの作り方 <http://www.ipa.go.jp/security/vuln/websecurity.html>`_
+* 徳丸浩 著『体系的に学ぶ 安全なWebアプリケーションの作り方　脆弱性が生まれる原理と対策の実践』 ソフトバンククリエイティブ, 2011 年
+* マイケル・ハワード, デイビッド・ルブラン 著 『Writing Secure Code第2版〈上〉』日経BPソフトプレス, 2004 年

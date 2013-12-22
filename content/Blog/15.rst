@@ -1,0 +1,289 @@
+========================================================
+Doctrine 2 のエンティティで Essence Pattern を使ってみた
+========================================================
+
+:date: 2011-09-04 20:03:33
+:slug: blog-15
+
+Essence Pattern とは
+====================
+
+Essence Pattern の紹介は Andy Carlson による http://hillside.net/plop/plop98/final_submissions/P10.pdf から読むことができます。
+
+簡単に言うと、このパターンはインスタンスが正しい値のプロパティのみを所持していることを保証しますが、この記事では主にコンストラクタを修正した場合の影響を小さく抑える点を重視しています。
+
+なぜこのパターンが必要だったか
+==============================
+
+Doctrine 2 のエンティティオブジェクトのコンストラクタに何をさせるべきかということについて考えていました。一般的に、コンストラクタではそのクラスが必要としている必要最低限度の初期化処理のみをおこなうべきでしょう。
+
+次のようなスキーマを考えます::
+
+    /**
+     * @Entity
+     * @Table(name="document")
+     */
+    class Document
+    {
+       /**
+        * @Id
+        * @Column(type="integer")
+        * @GeneratedValue(strategy="AUTO")
+        */
+        protected $id;
+
+        /**
+         * @Column(type="string", nullable=false)
+         */
+        protected $title;
+        
+        /**
+         * @Column(type="string", nullable=false)
+         */
+        protected $body;
+        
+        /**
+         * @Column(type="string", nullable=true)
+         */
+        protected $note;
+    }
+
+この状況では、コンストラクタの定義は次のようになります::
+
+    public function __construct($title, $body)
+    {
+        $this->title = $title;
+        $this->body = $body;
+    }
+
+よさそうではあります。しかし、 $note が必須なプロパティになった場合はどうすればいいでしょうか？　$body が削除された場合は？　引数リストを変更してしまうのは影響範囲が大きいかもしれませんが、このアプローチではそれ以外に方法がありません。
+
+コンストラクタを使うことをあきらめてみましょう。つまり、以下のようにセッター経由ですべて初期化してしまうのです::
+
+    $instance = new Document();
+    $instance->setTile($title);
+    $instance->setBody($body);
+
+格好悪いですね。それに、初期化処理であることが明確ではありません。必要なプロパティがすべてセットされないままインスタンスを使用される恐れがあります。
+
+メソッドチェーンによってこの格好悪さは減るかもしれませんが不明確さは残ったままです::
+
+    $instance = new Document();
+    $instance->setTitle($title)
+        ->setBody($body);
+
+エッセンスパターンを実装してみる
+================================
+
+まず、エッセンスクラスを定義します::
+
+    class DocumentEssence
+    {
+        protected $title;
+    
+        protected $body;
+    
+        protected $note;
+    
+        public static function createInstance()
+        {
+            return new static();
+        }
+    
+        public function setTitle($title)
+        {
+            $this->title = $title;
+    
+            return $this;
+        }
+    
+        public function setBody($body)
+        {
+            $this->body = $body;
+    
+            return $this;
+        }
+    
+        public function setNote($note)
+        {
+            $this->note = $note;
+    
+            return $this;
+        }
+    
+        protected function validate()
+        {
+            return ($this->title && $this->body);
+        }
+    
+        public function createDocument()
+        {
+            if (!$this->validate()) {
+                throw new LogicException('You must specify value of $title and $body');
+            }
+    
+            return new Document($this->title, $this->body, $this->note);
+        }
+    }
+    
+
+Document のコンストラクタでは、すべてのプロパティをセットするように変更します::
+
+        public function __construct($title, $body, $note)
+        {
+            $this->title = $title;
+            $this->body = $body;
+            $this->note = $note;
+        }
+
+実際に使ってみます::
+
+    $document = DocumentEssence::createInstance()
+        ->setTitle($title)
+        ->setBody($body)
+        ->createDocument();
+
+このアプローチの利点は:
+
+* Document のインスタンスはバリデート済みのプロパティしか持たない
+* Document の引数リストの更新は大きなインパクトにならない。 DocumentEssence にある Document の作成処理を書き換え、 DocumentEssence::createInstance() によるメソッドチェーンを使っているすべての場所でメソッドコールを追加するだけ
+
+Get Doctrine Power: Dynamic Essence (Doctrine の力を借りた動的なエッセンス)
+===========================================================================
+
+.. container:: in_english
+
+Essence looks like a good, but it is a bother to create an Essence per an Entity.
+
+In this article, I talk as premises for using with Doctrine. Are there any way of getting help with from Doctrine? Let's try it.
+
+Think of general essence class. This class, gets metadata of class and understand about how to validate propety::
+
+    class EntityEssence
+    {
+        protected $class;
+
+        protected $data = array();
+
+        protected function __construct(ClassMetadata $class)
+        {
+            $this->class = $class;
+        }
+
+        public static function createInstance(ClassMetadata $class)
+        {
+            return new static($class);
+        }
+
+        public function set($name, $value)
+        {
+            $this->data[$name] = $value;
+
+            return $this;
+        }
+
+        protected function validate()
+        {
+            foreach ($this->class->getFieldNames() as $field) {
+                if (!$this->class->isNullable($field) && !isset($this->data[$field])) {
+                    if (!$this->class->isIdentifier($field)) {
+                        throw new \LogicException('You must specify a value of the "'.$field.'" field.');
+                    }
+                }
+            }
+        }
+
+        public function createEntity()
+        {
+            $this->validate();
+
+            $entity = $this->class->newInstance();
+            foreach ($this->data as $k => $v) {
+                $property = $this->class->getReflectionProperty($k);
+                $property->setAccessible(true);
+                $property->setValue($entity, $v);
+            }
+
+            return $entity;
+        }
+    }
+
+And use this like the following::
+
+    $document = EntityEssence::createInstance($em->getClassMetadata('Entities\Document'))
+        ->set('title', $title)
+        ->set('body', $body)
+        ->createEntity();
+
+.. container:: in_japanese
+
+エッセンスはよさそうに見えますが、エンティティごとにエッセンスを作らなくてはいけなくて面倒ですね。
+
+ここでは Doctrine の存在を前提にしているので、なんとか Doctrine の助けを借りる方法はないものでしょうか。試してみましょう。
+
+汎用的なエッセンスクラスを考えます。このクラスでは、クラスメタデータを受け取り、プロパティをどうバリデートするべきかを理解します::
+
+    class EntityEssence
+    {
+        protected $class;
+
+        protected $data = array();
+
+        protected function __construct(ClassMetadata $class)
+        {
+            $this->class = $class;
+        }
+
+        public static function createInstance(ClassMetadata $class)
+        {
+            return new static($class);
+        }
+
+        public function set($name, $value)
+        {
+            $this->data[$name] = $value;
+
+            return $this;
+        }
+
+        protected function validate()
+        {
+            foreach ($this->class->getFieldNames() as $field) {
+                if (!$this->class->isNullable($field) && !isset($this->data[$field])) {
+                    if (!$this->class->isIdentifier($field)) {
+                        throw new \LogicException('You must specify a value of the "'.$field.'" field.');
+                    }
+                }
+            }
+        }
+
+        public function createEntity()
+        {
+            $this->validate();
+
+            $entity = $this->class->newInstance();
+            foreach ($this->data as $k => $v) {
+                $property = $this->class->getReflectionProperty($k);
+                $property->setAccessible(true);
+                $property->setValue($entity, $v);
+            }
+
+            return $entity;
+        }
+    }
+
+これを以下のように使用します::
+
+    $document = EntityEssence::createInstance($em->getClassMetadata('Entities\Document'))
+        ->set('title', $title)
+        ->set('body', $body)
+        ->createEntity();
+
+バリデーションに関する考察
+==========================
+
+Essence でどの程度まで深くバリデーションをするべきかを考える必要があります。
+
+エンティティのインスタンスがイミュータブルな場合、すべてのバリデーションがエッセンスクラスに入りえます。ただ現実にはそのようなケースは稀でしょう。
+
+エッセンスクラスのバリデーションは初期化処理として最小限のものにとどめるべきかなと思います。

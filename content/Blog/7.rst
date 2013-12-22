@@ -1,0 +1,87 @@
+=======================================================
+2002 年の WMP の SuperCookie のディスクローズを和訳した
+=======================================================
+
+:date: 2010-06-10 12:51:48
+:slug: blog-7
+
+やべ 4 ヶ月振りの日記だ。
+
+とりあえず取り急ぎ参考にする必要があったので、昔 bugtraq にあがっていたらしい以下のディスクローズを自分用に和訳してみたので公開します。
+
+Internet Explorer SuperCookies bypass P3P and cookie controls
+    http://www.computerbytesman.com/privacy/supercookie.htm
+
+※自分用なので訳さなくてもすぐニュアンスが汲み取れるようなところは適当にしている気がします。よくわからなかったところも適当かも。
+
+※2002 年の内容なのでかなり古く（日本ではいまそこにある問題ですが）、現在では死滅していそうな用語なんかもあったりしますが、特に注釈とかは加えません。
+
+※翻訳に関するご指摘やアドバイスは歓迎しますが、すぐには訂正できないかもしれません。
+
+--------------------
+
+----
+概要
+----
+
+Internet Explorer には、 Windows Media Player (WMP) における設計上の欠陥に由来する、プライバシー上の重大な問題がある。Web ページ上で簡単な Javascript のコードを使うことで、Web サイトは訪問者に属した Windows Media Player のユニークな ID 番号を不当に入手することができる。この ID 番号は、 ユーザの Web での行動のトラッキングをおこなうために、 Cookie のようにして Web サイトから使用することができる。
+
+ところが、この ID 番号は、新しいプライバシー (?) や、 Microsoft が Internet Explorer 6 (IE6) で加えた P3P の保護を回避するために Web サイトで使用することができるため、 SuperCookie になりうる。 IE6 は今日すべての Windows XP のシステムに提供されている。 SuperCookie はすべての古いバージョンの Windows における、以前のバージョンの Internet Explorer でも機能する。
+
+SuperCookie は他に以下の機能を含んでいる:
+
+* すべての Web サイトで同じ ID 番号を取得するので、 今日日広告ネットワークやインターネットマーケティング会社で使われている第三者 Cookie のように、ユーザにマッチした情報を簡単にやりとりできる。
+* Cookie をブロックするアドインを使用していても、 SuperCookie は動作し続ける。
+* もしユーザがトラッキングを止めるために Cookie をコンピュータから削除した場合、 Web サイトはこの ID 番号を使って古い Cookie の値を復元することができる。一度 Cookie の値が復元されると、 Web サイトによって、新しいトラッキングデータと以前に収集したトラッキングデータを結合させることができる。
+* SuperCookie を止めるためには WMP の、かろうじてドキュメント化されている、あまりよく知られていないオプションを変更する必要がある。
+
+この記事が公開された後、 SuperCookie の問題は Windows Media Player のバージョン 9 にて Microsoft によって、すべてのコンピュータが同じ Cookie の値 {3300AD50-2C39-46c0-AE0A-000000000000} を返すように修正されている。
+
+----------
+デモページ
+----------
+
+この問題を示すために単純なデモページを設置した:
+    http://www.computerbytesman.com/privacy/supercookiedemo.htm 
+
+------------
+技術的な詳細
+------------
+
+Windows Media Player がコンピュータにインストールされると、ユニークな ID 番号 が GUID の形式でプレイヤーに割り当てられる。この ID 番号は Windows のレジストリに格納される。どのような ActiveX インターフェースも、"ClientID" プロパティを使用した ID 番号 を取得するための JavaScript プログラムを許すように、 Windows Media Player に作用する。
+
+以下は、どれほど簡単に ID 番号を取得できるかを示した HTML と JavaScript コードの例である::
+
+    <OBJECT classid="clsid:22D6F312-B0F6-11D0-94AB-0080C74C7E95" ID=WMP WIDTH=1 HEIGHT=1>
+    </OBJECT>
+
+    <script>
+    alert(document.WMP.ClientID);
+    </script>
+
+一度 ID 番号が JavaScript プログラムで利用可能になってしまえば、 Web バグの URL に追加したり Web ブラウザの通常のクッキーに格納することによって、 Web サイトに送信しかえすことができる。
+
+実際の WMP プレイヤー ID 番号は Windows レジストリの以下のキーに格納される::
+
+    HKEY_CURRENT_USER\Software\Microsoft\Windows Media\WMSDK\General
+    string value "UniqueID"
+
+    or
+
+    HKEY_USERS\<user>\Software\Microsoft\Windows Media\WMSDK\General
+    string value "UniqueID"
+
+もしこれらのキーのうちのひとつを REGEDIT を使って手動で変更すると、先ほどのデモページは新しい ID 番号を示す。ところが、キーを変更したままだと WMP の機能である Digital Rights Management (DRM) 機能を壊すかもしれない。
+
+新しいバージョンの WMP には、 "Tools | Options" メニュー内に "Allow Internet sites to uniquely identify your player" というオプションが存在する。もしこのオプションを手動で off にした場合、 Internet Explorer は新しいプレイヤー ID 番号を IE のセッション毎に生成するため SuperCookie は無効になる。
+
+Netscape Navigator でも、 WMP プラグインがインストールされていれば SuperCookie は動作する。
+
+------------------
+Microsoft への忠告
+------------------
+
+私は、もともと、この問題について 2001 年 3 月に Microsoft に報告した。その時点では WMP をアンインストールするか JavaScript を無効にする意外に SuperCookie を無効にする有効な方法が存在しなかった。どちらの解決方法も有用でなかった。 Microsoft へのメッセージの返信で、彼らは　"Allow Internet sites to uniquely identify your player" という WMP のオプションからチェックがはずれている場合はセッション毎のプレイヤー ID 番号を提供するように WMP をアップデートした。このアップデートはこの Microsoft security bulletin に説明がある:
+    http://www.microsoft.com/technet/security/bulletin/MS01-029.asp 
+
+しかし、私にはこれがたいていの Windows ユーザにとって実行可能な解決方法であるとは思えない。 Internet Explorer におけるプライバシーの流出を防ぐために、あまり知られていない WMP の設定を変更することを求めるのはあまりよい方針とはいえない。代わりに、私は、 WMP ActiveX における ClientID プロパティは、すべてのプレイヤーにおいてゼロを返すようにすることで、 ID 番号恒久的に無効にするのがよいと思う。

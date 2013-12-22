@@ -1,0 +1,241 @@
+=================================================
+au の F001 に存在した EZ 番号詐称の脆弱性について
+=================================================
+
+:date: 2011-11-29 10:56:05
+:slug: blog-19
+
+このエントリでは、海老原が 11/11 に発見した、「F001 の PC サイトビューアを利用して EZ 番号の作業がおこなえる」という脆弱性について説明します。
+
+この脆弱性を利用されると、たとえば、「かんたんログイン」などの機能を提供する勝手サイトにおいて、 au 端末を利用したユーザになりすまされてしまうといった被害が発生しえます。
+
+本問題の解決に向けてご協力いただいた `徳丸さんのブログエントリ <http://blog.tokumaru.org/2011/11/kddigw_29.html>`_ にも詳しく触れられていますのでそちらもご一読ください。
+
+おさらい
+========
+
+徳丸浩さんの以下のエントリで説明されているとおり、 au の 2011 年秋冬モデルの端末でおこなわれる（と宣言されている）変更が、「かんたんログイン」等の用途で使われている EZ 番号の詐称を許す可能性があるのではないかと多くの方々の間で懸念されていました。
+
+    IPアドレスについてはKDDI au: 技術情報 > IPアドレス帯域に記載されています。「※2011年秋冬モデル以降の端末では、搭載されるEZブラウザ、PCSVの各ブラウザのIPアドレスが、統一されます」とのことですが、これはセキュリティの観点から重要な意味を持つと思われます。
+    
+    (略)
+    
+    上記のように、現状のPCサイトビューアでは、EZ番号が追加できるほか、W52TではUser-Agentも変更できます。2011年秋冬モデルの仕様はわかりませんが、上記と同じ仕様である場合、EZ番号の偽装が可能になります。
+    
+    -- `EZwebの2011年秋冬モデル以降の変更内容とセキュリティ上の注意点 - ockeghem(徳丸浩)の日記 <http://d.hatena.ne.jp/ockeghem/20110615/p1>`_
+
+EZ 番号などを利用した「かんたんログイン」は、 (契約者固有 ID に関するヘッダを書き換える機能を有さない) ケータイサイト用ブラウザ (au 端末の場合、 EZ ブラウザ) からのアクセス「っぽい」かどうかを確認することで、かろうじて成り立っています。「ケータイサイト用ブラウザっぽい」かどうかは、ユーザエージェント文字列と IP アドレスを確認することで、とりあえずできる「っぽい」ことになっています。
+
+PC サイトビューアと EZ ブラウザの IP アドレスが統一されることで、ケータイサイトからはユーザーエージェントなどの情報によってしか両者を区別する手段がないことになります。ですので、 PC サイトビューア側で「ユーザエージェント文字列の書き換え」と「EZ 番号の詐称」が可能である場合、ケータイサイトからは、通常ユーザが EZ ブラウザから (EZ 番号を伴って) アクセスしてきた場合と区別することができません。
+
+脆弱性の概要
+============
+
+海老原の発見した脆弱性は、 PC サイトビューアの JavaScript で XMLHttpRequest を用いることで、任意のユーザーエージェント文字列と EZ 番号を送信したなりすましがおこなえる、というものです。
+
+ただし、影響を受けるのは、「Apache や Lighttpd などの特定の条件を満たす HTTP サーバ (Nginx は対象外) がリクエストを受け付け、 CGI スクリプトを実行している」場合に限定されるはずです。
+
+攻撃方法について
+----------------
+
+まず、 XMLHttpRequest で「ユーザエージェント文字列」と「EZ 番号」の詐称がおこなえないかどうかを確認するために、これらのリクエストヘッダの内容を出力する PHP スクリプト (後述するが、言語は PHP でなくてもよい) に対して XMLHttpRequest 経由でリクエストをおこない、その出力内容が詐称したものになっていないかどうかを検証しました。検証に使ったスクリプトは `Gist <https://gist.github.com/1403020#file_au_f001_poc.php>`_  に置いておきます。
+
+そして、 F001 の PC サイトビューアでこの PoC を実行した様子が以下です。
+
+.. image:: http://co3k.org/image/uploaded/f001_pcsv.png
+    :width: 320px
+    :target: http://co3k.org/image/uploaded/f001_pcsv.png
+
+一番上に表示されているユーザエージェント文字列が、 PoC に対してアクセスしたときに PHP が受け取った $_SERVER['HTTP_USER_AGENT'] の値です。
+
+「Normal」の直下に表示されているユーザーエージェント文字列は、 User-Agent と X-Up-Subno ヘッダを XMLHttpRequest で送信した際の $_SERVER['HTTP_USER_AGENT'] の値、それから $_SERVER['HTTP_X_UP_SUBNO'] が取得できなかったために "not provided" という文字を表示したものです（わかりにくくてごめんなさい）。出力に含まれるユーザエージェント文字列が、 XMLHttpRequest で送信した内容ではなく、 F001 本来のものであることがわかります。
+
+「Under」の直下に表示されているものは、 User_Agent と X_Up_Subno ヘッダを送信した際の出力です。 User-Agent と X-Up-Subno を送信した場合と同じ結果になっています。
+
+しかし、 User.Agent ヘッダと X.Up.Subno ヘッダを送信した場合——「Dot」の直下の表示を見てください。なんと、ユーザエージェント文字列と EZ 番号の詐称がおこなえてしまっているではありませんか！
+
+サーバに記録されたログを確認すると、確かに、秋冬モデルの `IP アドレス帯域 <http://www.au.kddi.com/ezfactory/tec/spec/ezsava_ip.html>`_ として示されていた IP からアクセスされていることがわかります (リファラのあるアクセスはおそらく XMLHttpRequest によるもの / Apache のアクセスログには、偽装したものではなく、 PC サイトビューアのユーザーエージェント文字列が記載されている)::
+
+    111.107.116.5 - - [11/Nov/2011:01:41:49 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 1010 "-" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.6 - - [11/Nov/2011:01:41:54 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 352 "http://〓〓〓〓〓/PoC/〓〓〓〓〓.php" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.14 - - [11/Nov/2011:01:42:04 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 375 "http://〓〓〓〓〓/PoC/〓〓〓〓〓.php" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.14 - - [11/Nov/2011:01:42:06 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 375 "http://〓〓〓〓〓/PoC/〓〓〓〓〓.php" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.17 - - [11/Nov/2011:14:35:21 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 1010 "-" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.19 - - [11/Nov/2011:14:35:42 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 375 "http://〓〓〓〓〓/PoC/〓〓〓〓〓.php" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.18 - - [11/Nov/2011:14:35:45 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 375 "http://〓〓〓〓〓/PoC/〓〓〓〓〓.php" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+    111.107.116.18 - - [11/Nov/2011:14:35:47 +0900] "GET /PoC/〓〓〓〓〓.php HTTP/1.1" 200 352 "http://〓〓〓〓〓/PoC/〓〓〓〓〓.php" "Mozilla/5.0 Opera/9.80 (KDDI-FJ31; BREW; Opera Mobi; U; ja) Presto/2.4.18 Version/10.00"
+
+IP アドレスとユーザーエージェント文字列が共に EZ ブラウザ「っぽい」ものなのであれば、サイト側としてはこのリクエストに含まれる EZ 番号を信頼するのが、えーとなんというか慣習になっているので、これを利用し、秋冬モデルの IP アドレスを許可しているサイトに対してのなりすましがおこなえてしまうことになります。
+
+なお、徳丸さんのエントリでは、影響を受けるサイトの条件として以下が挙げられていました。
+
+    JavaScriptを外部から実行できる脆弱性がある
+
+    --- `徳丸浩の日記: KDDIの新GWで「かんたんログイン」なりすましの危険性あり直ちに対策された <http://blog.tokumaru.org/2011/11/kddigw_29.html>`_
+
+しかし、 F001 はロケーションバーからの javascript: スキームの入力を許しています。これを利用して、 XSS 脆弱性がないサイトをターゲットとした場合でも、任意のヘッダを送信することができてしまいます。いわゆる Self-XSS というやつです。
+
+（余談ですが近年はこれで `ブラウザの脆弱性 <http://www.itmedia.co.jp/enterprise/articles/1111/17/news021.html>`_ とか言われちゃうわけですね……）
+
+以下の画像は、先ほどの PoC で定義している getRequest() という関数をロケーションバーから叩いたときの様子です。
+
+.. image:: http://co3k.org/image/uploaded/f001_location.png
+    :width: 320px
+    :target: http://co3k.org/image/uploaded/f001_location.png
+
+脆弱になりえたサーバ環境
+------------------------
+
+手元で調べた限りでは、 Apache と Lighttpd を使って CGI スクリプトを実行している場合は脆弱になりそうです。一方で、 Nginx を使っている場合は脆弱になりません。
+
+まあ論より証拠ということで実際に見てみましょう。以下のような、 CGI スクリプトの認識する環境変数を出力する Python スクリプトを実行し、アンダーバーやドットといった文字をヘッダの名前に含むリクエストに対してどのようなレスポンスを返すかを確認します::
+
+    #!/usr/bin/env python
+    # -*- coding: UTF-8 -*-
+    
+    import os
+    
+    print "Content-Type: text/plain\n";
+    
+    for k, v in sorted(os.environ.items()):
+         print "%s: %s" % (k, v)
+
+Apache
+------
+
+X_Under と X.Dot というヘッダを送信すると、以下のような結果を得ることができました (結果は一部省略)::
+
+    $ telnet localhost 80
+    GET /~co3k/envs.cgi.py HTTP/1.0
+    X-Normal: Hello
+    X_Under: Hello
+    X.Dot: Hello
+
+    HTTP/1.1 200 OK
+    Date: Wed, 23 Nov 2011 10:30:53 GMT
+    Server: Apache/2.2.20 (Unix) DAV/2 PHP/5.3.6 with Suhosin-Patch
+    Connection: close
+    Content-Type: text/plain
+
+    HTTP_X_DOT: Hello
+    HTTP_X_NORMAL: Hello
+    HTTP_X_UNDER: Hello
+
+アンダーバーがそのまま環境変数に反映され、ドットがアンダーバーに置き換わっています。
+
+この挙動については、実は、 Apache のマニュアルに記載されています。
+
+    移植性のために、環境変数の名前はアルファベット、 数字とアンダースコア (訳注: '_') だけから成ります。 さらに、最初の文字は数字であってはいけません。 この制限に合わない文字は CGI スクリプトと SSI ページに渡されるときにアンダースコアに置換されます。
+    
+    -- `Apache の環境変数 - Apache HTTP サーバ <http://httpd.apache.org/docs/trunk/ja/env.html#setting>`_
+
+Lighttpd
+--------
+
+以下のような結果を得ることができました (結果は一部省略)::
+
+    $ telnet localhost 8037
+    GET /envs.cgi.py HTTP/1.0
+    X-Normal: Hello
+    X_Under: Hello
+    X.Dot: Hello
+
+    HTTP/1.0 200 OK
+    Content-Type: text/plain
+    Connection: close
+    Date: Wed, 23 Nov 2011 10:43:12 GMT
+    Server: lighttpd/1.4.28
+
+    HTTP_X_DOT: Hello
+    HTTP_X_NORMAL: Hello
+    HTTP_X_UNDER: Hello
+
+Apache の場合と同じですね。ドットがアンダーバーに置き換わっています。
+
+この挙動についての記述は見当たらなかったので、 `ソースコードを追って確認しました <http://redmine.lighttpd.net/projects/lighttpd/repository/entry/trunk/src/mod_cgi.c#L868>`_ 。アルファベットと数字以外はすべてアンダースコアとしてみなすような実装になっています。確認できた限りでは、アンダースコアに置き換える実装は 1.3.7 からずっと続いているようです（余談ですが、当時のコードを読む限り、数字もアンダースコアに置換してしまうというバグがあったようです）。
+
+Nginx
+-----
+
+以下のような結果を得ることができました (結果は一部省略)::
+
+    $ telnet localhost 8080
+    GET /env/ HTTP/1.0
+    X-Normal: Hello
+    X_Under: Hello
+    X.Dot: Hello
+
+    HTTP/1.1 200 OK
+    Server: nginx/1.0.9
+    Date: Wed, 23 Nov 2011 10:57:07 GMT
+    Content-Type: text/plain
+    Connection: close
+
+    HTTP_X_NORMAL: Hello
+
+アンダーバーとドットを含むヘッダが出力されません。
+
+`これもソースコードを追って確認しました <http://trac.nginx.org/nginx/browser/nginx/trunk/src/http/ngx_http_parse.c#L753>`_ 。英数字とアンダースコア以外の文字が含まれている場合に無視するよう実装されています。
+
+ヘッダを無視した場合、 info レベルで以下のようにロギングされます::
+
+    2011/11/23 19:57:07 [info] 64743#0: *8 client sent invalid header line: "X_Under: Hello" while reading client request headers, client: 127.0.0.1, server: localhost, request: "GET /env/ HTTP/1.0"
+    2011/11/23 19:57:07 [info] 64743#0: *8 client sent invalid header line: "X.Dot: Hello" while reading client request headers, client: 127.0.0.1, server: localhost, request: "GET /env/ HTTP/1.0"
+
+ちなみにアンダースコアは `underscores_in_headers <http://wiki.nginx.org/HttpCoreModule#underscores_in_headers>`_ という設定で許容することができるようです。
+
+他にも？
+--------
+
+調べたのはこのくらいですが、他にもなんだかありそうな気はします。
+
+HTTP サーバとしての機能を抱えた Java のサーブレットコンテナとかどうなのかなーと気になっていたのですが、徳丸さんが既に検証しておられました。
+
+    一方、Java EE（Servlet）（HttpServletRequest#getHeaderメソッド）や.NET（Request.Headersプロパティ）では、リクエストヘッダを元のまま受け取ります。以下、CGIの形式の場合について議論します。
+
+    --- `徳丸浩の日記: KDDIの新GWで「かんたんログイン」なりすましの危険性あり直ちに対策された <http://blog.tokumaru.org/2011/11/kddigw_29.html>`_
+
+おお、なるほど。
+
+リクエストヘッダを受け取ったまま使用する場合、 CGI に環境変数を渡すときのような何らかの便宜をはかってさえいなければ問題にならないでしょうね。
+
+少なくとも PHP は影響を受ける可能性が大きくなるはず
+---------------------------------------------------
+
+と半分釣り気味に書いてみましたが、 Nginx でリクエストを処理する場合は前述の通りハイフンと英数字以外を許容しないので相変わらず影響を受けません。よかったですね！
+
+さて、 PHP のマニュアルの `「外部から来る変数」 <http://www.php.net/manual/ja/language.variables.external.php>`_ にはこんなことが書かれています。
+
+    注意:
+    変数名のドットやスペースはアンダースコアに変換されます。 たとえば <input name="a.b" /> は $_REQUEST["a_b"] となります。
+    
+    -- `PHP: 外部から来る変数 - Manual <http://www.php.net/manual/ja/language.variables.external.php>`_
+
+おそらくこれは、 `register_globals <http://www.php.net/manual/ja/ini.core.php#ini.register-globals>`_ 対策です。 PHP の変数名として使用できない文字を置換しておき、 register_globals によって、これらのスーパーグローバル配列のキーが変数名として登録されたときに問題が生じないようにという配慮なのでしょう（このあたりの置換処理は php_register_variable() や php_register_variable_safe() からコールされる php_register_variable_ex() でやってるのかな）。
+
+ですので、ヘッダ名に含まれるドットやスペースを素通しして PHP に渡されてしまうと、 Apache のような置換処理を経由しなくても脆弱となります（たとえば、 PHP 5.4 の `ビルトインウェブサーバ <http://www.php.net/manual/ja/features.commandline.webserver.php>`_ を使用する場合）。
+
+経過
+====
+
+* 2011/11/10 (木): `弊社 <http://www.tejimaya.com/>`_ に F001 がやってくる (その日はちょうど送迎会と `OpenPNE <http://www.openpne.jp/>`_ の安定版リリースがあったためすぐには検証できず)
+* 2011/11/10 (木) 25 時頃: 検証の過程でこの問題を見つけて目を剥き、同日に F001 を購入し検証されていた徳丸浩さんにアドバイスを求めることにした。いきなりのご相談にもかかわらず、丁寧にアドバイスいただき、本当にありがとうございました
+* 2011/11/11 (金): 徳丸さんの取り計らいにより、 KDDI にすぐに問題が伝わる
+* おそらく 2011/11/12 (土)、 PC サイトビューアの IP アドレス帯域が変わる
+* これを受けて「なにか問題があったのではないか」と Twitter やはてブあたりで話題になる
+* `au の技術情報ページから IP アドレス帯域統合の件に関する記述がなくなる <http://ke-tai.org/forum/comments.php?DiscussionID=2&Focus=534#Comment_534>`_
+
+おまけ: PC のブラウザにおける XMLHttpRequest で送信可能なヘッダの制限
+=====================================================================
+
+ところで、手元の Firefox (10.0a2) で Gist に置いた PoC を試すと、 User-Agent の書き換えのみが拒否され、 User_Agent や X-Up-Subno などのヘッダは送信されます。ブラウザベンダーが「これは好き勝手に送信されるとよくない」と判断したヘッダの送信を禁止しているためです。このことは、 `Browser Security Handbook <http://code.google.com/p/browsersec>`_ の `調査結果 <http://code.google.com/p/browsersec/wiki/Part2#Same-origin_policy_for_XMLHttpRequest>`_ にまとまっています。以下の表がそれです。
+
+.. image:: http://co3k.org/image/uploaded/xhr_denied_headers.png
+    :width: 480px
+    :target: http://co3k.org/image/uploaded/xhr_denied_headers.png
+
+`Mozilla の実装 <http://hg.mozilla.org/mozilla-central/file/b914869ee1e0/content/base/src/nsXMLHttpRequest.cpp#l2665>`_ と `WebKit の実装 <http://trac.webkit.org/browser/trunk/Source/WebCore/xml/XMLHttpRequest.cpp#L391>`_ をちょっと確認してみましたが、割と普通に case-insensitive な文字列マッチングで弾いているだけで、アンダースコアやドットなんかはそのまま通ってしまいそうです。まあブラウザからしてみれば弾く理由もないはずなので当然ですが。
+
+これまでに紹介した、「アンダースコアやドットによってブラウザ側の XMLHttpRequest の制限を回避して CGI に意図通りのヘッダを送信する」というテクニックがどの程度悪用できるかというと……ちょっと思いつきませんね。
+
+Host ヘッダや Referer ヘッダは 1 語なんで送信させられないし。 webappsec.org の ML かなにかに投稿したらなにかアイディア出てくるのかなー。

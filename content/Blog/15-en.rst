@@ -1,0 +1,159 @@
+================================================
+Try to use Essence Pattern in Doctrine 2 Entity 
+================================================
+
+:date: 2011-09-04 20:03:33
+:slug: blog-15
+:lang: en
+
+What's Essence Pattern?
+=======================
+
+Introduction of Essence Pattern can be found in http://hillside.net/plop/plop98/final_submissions/P10.pdf by Andy Carlson.
+
+In short, this pattern ensure that an instance has only valid value of properties, but in this article, I focused this pattern can minimize effect of changing constructor.
+
+Why do I need this pattern
+==========================
+
+I thought about what should a constructor of an entity object of Doctrine 2. In general, a constructor should only do minimum initialization which are required by that class.
+
+Think about the following type of schema::
+
+    /**
+     * @Entity
+     * @Table(name="document")
+     */
+    class Document
+    {
+       /**
+        * @Id
+        * @Column(type="integer")
+        * @GeneratedValue(strategy="AUTO")
+        */
+        protected $id;
+
+        /**
+         * @Column(type="string", nullable=false)
+         */
+        protected $title;
+        
+        /**
+         * @Column(type="string", nullable=false)
+         */
+        protected $body;
+        
+        /**
+         * @Column(type="string", nullable=true)
+         */
+        protected $note;
+    }
+
+In this situation, definition of constructor should be the following::
+
+    public function __construct($title, $body)
+    {
+        $this->title = $title;
+        $this->body = $body;
+    }
+
+Might be a good. But, what should I do if the $note became a required property? If the $body is removed? Changing argument list may be big extent of the impact, but, in this approach, we can't select any other way.
+
+Try to give up using constructor; everything is came from setter like the following::
+
+    $instance = new Document();
+    $instance->setTile($title);
+    $instance->setBody($body);
+
+Too ugly and this is unclear these are initialization. It causes use of an instance which doen't have completely values in properties.
+
+Method chaining will decrease some ugly point. But there is still unclear::
+
+    $instance = new Document();
+    $instance->setTitle($title)
+        ->setBody($body);
+
+Try to implement of Essence Pattern
+===================================
+
+First, define essence class::
+
+    class DocumentEssence
+    {
+        protected $title;
+    
+        protected $body;
+    
+        protected $note;
+    
+        public static function createInstance()
+        {
+            return new static();
+        }
+    
+        public function setTitle($title)
+        {
+            $this->title = $title;
+    
+            return $this;
+        }
+    
+        public function setBody($body)
+        {
+            $this->body = $body;
+    
+            return $this;
+        }
+    
+        public function setNote($note)
+        {
+            $this->note = $note;
+    
+            return $this;
+        }
+    
+        protected function validate()
+        {
+            return ($this->title && $this->body);
+        }
+    
+        public function createDocument()
+        {
+            if (!$this->validate()) {
+                throw new LogicException('You must specify value of $title and $body');
+            }
+    
+            return new Document($this->title, $this->body, $this->note);
+        }
+    }
+    
+
+In constructor of Document, changed it to set all properties::
+
+        public function __construct($title, $body, $note)
+        {
+            $this->title = $title;
+            $this->body = $body;
+            $this->note = $note;
+        }
+
+And use::
+
+    $document = DocumentEssence::createInstance()
+        ->setTitle($title)
+        ->setBody($body)
+        ->createDocument();
+
+Advantage of this approach is:
+
+* An instance of document has only validated values
+* Changing argument list of Document isn't big impact. You only need to rewrite creation Document in the DocumentEssence and to add method calls every DocumentEssence::createInstance() method chaining
+
+Consideration of validation
+===========================
+
+I need to consider that how deep should Essence validate.
+
+If an instance of entity is immutable, all validations can be in an Essence class. But, in the real world, such a case may be a minority.
+
+I think a validation of Essence class should be minimum as initialization.

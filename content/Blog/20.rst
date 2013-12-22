@@ -1,0 +1,212 @@
+=============================================================
+【情報求ム】au のガラケーで cookie が使えなくなる場合がある？
+=============================================================
+
+:date: 2011-12-06 13:18:42
+:slug: blog-20
+
+結論から言うと、 au 端末の EZ ブラウザで cookie が使えなくなって困ったりした経験をお持ちの方とか、そのあたりの情報を知っている方とかいらっしゃいませんか？　という話です。
+
+「あ、俺この問題遭遇しているよ！」とかあれば、技術的な話とか調査結果とかすっ飛ばして、このエントリの最下部、「同志募集」の節をご覧ください。
+
+なんだそれ
+==========
+
+ことのはじまりは、 OpenPNE の Redmine に以下のチケットが登録されたことでした。
+
+OpenPNE 3 - Bug（バグ） #2134: au の一部の端末でセッションが保持できない （ログインできない） - OpenPNE Issue Tracking System
+    http://redmine.openpne.jp/issues/2134
+
+このチケットで報告されている内容やその背景を要約すると、
+
+* OpenPNE 3 はセッション維持に cookie を使用している (docomo の i モードブラウザ 2.0 未満を除く)
+* OpenPNE 3 は、 au の全端末で cookie が使用できる前提で実装している
+* ところが、報告者によれば、 W51SH でログインがおこなえなかったという。 OpenPNE のソースコードを変更し、 GET パラメータでセッション ID を引き回す方式に変更したところ、正常にセッション維持がおこなえるようになった
+* 検証用に所有している misora (KYX02) では再現が確認できなかった
+
+ということになります。
+
+これを受けて、検証センターに赴き、 W51SH で試してみても、再現を確認することができませんでした（＝ cookie によるセッション維持が正しく機能する）。
+
+HTTP 通信ではなく、 HTTPS 通信の場合はどうかと思い試してみても、念のため持参した misora でもう一度試しても、やはり現象は再現しません。
+
+事前に取扱説明書をダウンロードして確認したり、端末を操作して確認した限りでは、少なくとも W51SH や misora において、ユーザが自分で cookie の有効／無効を切り替えるような手段は提供されていないように見えました。以前個人的に使っていた W62SH でもそのような機能は見当たらなかったので、 au ではそういう設定は提供されていないのではないかと考えました。
+
+にもかかわらず、 `モバツイ <http://movatwitter.jp/>`_ の藤川真一さんによる、 `携帯Webのクッキー利用について調べてみたメモ【update】 <http://www.milkstand.net/fsgarage/archives/001690.html>`_ に、
+
+    -KDDI クッキー対応
+    1264 + 446 (全体の36.9%）
+
+    (446は、プログラムにバグによりクッキー非対応扱いだったもの。ただ後の動きを見る限り、ほぼクッキー対応と考えてよいと思われるのでこっちに入れている。）
+
+    -KDDIクッキー非対応
+    1
+
+    -- `携帯Webのクッキー利用について調べてみたメモ【update】 <http://www.milkstand.net/fsgarage/archives/001690.html>`_
+
+という、 1 件のみではありますが、なぜか cookie が使用できないと思われるケースが示されていること、それからこのバグチケットの存在を考えて、「原因は不明だが cookie によるセッション維持ができない au 端末は現実にありうるようなので、救済措置として cookie を使わずに GET パラメータでのセッション ID 引き回しを強制できる設定をつけることにしよう」と決め、とりあえずその場は引き上げることにしました。
+
+これが 2011 年 8 月の話です。
+
+あれ、再現するようになった！？
+==============================
+
+ところが、それから 1 ヶ月近くが経ち……
+
+au 端末で生じていた、先述のものとは別のバグの修正に取りかかろうと、検証端末の misora を操作していたとき、異変に気がつきました。
+
+なんと、 HTTPS 通信時に cookie が送信されなくなっているのです。つまり、いつの間にか先述のチケットで報告されているような現象が再現する状態になっていました。この状況は現在も続いているので、実際に現象が発生している様子をお見せします。
+
+まず、以下の PHP スクリプトをサーバに設置します::
+
+    <?php
+    setcookie('foo', 'bar');
+    header('Content-Type: text/html');
+    ?>
+    
+    <html>
+    <head>
+    <title>example</title>
+    </head>
+    <body>
+    <pre>
+    <?php var_dump(date('Y-m-d H:i:s'), headers_list(), $_COOKIE); ?>
+    </pre>
+    <a href="./?<?php echo htmlspecialchars(time(), ENT_QUOTES, 'UTF-8') ?>">Reload</a>
+    </body>
+    </html>
+
+Set-Cookie ヘッダと Content-Type ヘッダを送信し、 headers_list() によって得られる、このスクリプトが送信したレスポンスヘッダと、 $_COOKIE によって得られる端末から送られた cookie を var_dump() で出力します。あと説明のために現在日時も出しています。
+
+最初のアクセス時には $_COOKIE は空になるはずで、再度このスクリプトにアクセスした場合、 foo という cookie に bar という値が格納されていることが確認できるはずです。
+
+では、確認してみましょう。このスクリプトに対して HTTPS でアクセスしてみます。
+
+.. image:: http://co3k.org/image/uploaded/au_cookie_https_first.png
+    :width: 320px
+    :target: http://co3k.org/image/uploaded/au_cookie_https_first.png
+
+そして下の「Reload」からリロードします。スクリプト実行時のタイムスタンプが GET パラメータとして含まれるので、ブラウザキャッシュが使われたりするようなことはないはずです。
+
+.. image:: http://co3k.org/image/uploaded/au_cookie_https_second.png
+    :width: 320px
+    :target: http://co3k.org/image/uploaded/au_cookie_https_second.png
+
+Set-Cookie を受け取ったはずなのに、 $_COOKIE は依然として空のままであることがわかります。出力されている現在日時が先ほどと異なるので、ブラウザキャッシュが出力されているわけではなさそうなこともわかります。
+
+では続いて、 HTTP でもアクセスしてみます (「文字サイズを変えれば全部映るじゃん！」ということに気づいて端末側の文字サイズ変えました。あと写真の撮り方がだんだん適当になってますが気にしないで)。
+
+.. image:: http://co3k.org/image/uploaded/au_cookie_http_first.png
+    :width: 320px
+    :target: http://co3k.org/image/uploaded/au_cookie_http_first.png
+
+先ほどと同様に、「Reload」から再度アクセスします。
+
+.. image:: http://co3k.org/image/uploaded/au_cookie_http_second.png
+    :width: 320px
+    :target: http://co3k.org/image/uploaded/au_cookie_http_second.png
+
+こちらは意図通り、 $_COOKIE に Set-Cookie した内容が格納されています。
+
+ちなみに、サーバが送信する Set-Cookie ヘッダは RFC 2109 の "4.3.2 Rejecting Cookies" にて列挙されてる拒否要件をいずれも満たしておらず (というか拒否要件に挙げられているフィールドを指定していない)、 EZ ブラウザはこの cookie を保存することが期待されます。以下に引用します。
+
+    To prevent possible security or privacy violations, a user agent
+    rejects a cookie (shall not store its information) if any of the
+    following is true:
+
+    * The value for the Path attribute is not a prefix of the request-URI.
+
+    * The value for the Domain attribute contains no embedded dots or does not start with a dot.
+
+    * The value for the request-host does not domain-match the Domain attribute.
+
+    * The request-host is a FQDN (not IP address) and has the form HD, where D is the value of the Domain attribute, and H is a string that contains one or more dots.
+
+    -- `RFC 2109 - HTTP State Management Mechanism <http://tools.ietf.org/html/rfc2109#section-4.3.2>`_
+
+また、おなじく RFC 2109 の "4.3.4 Sending Cookies to the Origin Server" で示されている "Domain Selection"、 "Path Selection" および "Max-Age Selection" の条件はいずれも満たしているはずであり、 EZ ブラウザは cookie の情報を Cookie ヘッダによって送出することが期待されます。
+
+    Domain Selection
+        The origin server's fully-qualified host name must domain-match the Domain attribute of the cookie.
+    
+    Path Selection
+        The Path attribute of the cookie must match a prefix of the request-URI.
+    
+    Max-Age Selection
+        Cookies that have expired should have been discarded and thus are not forwarded to an origin server.
+    
+    -- `RFC 2109  HTTP State Management Mechanism <http://tools.ietf.org/html/rfc2109#section-4.3.4>`_
+
+デファクト・スタンダードである `Netscape cookie の仕様 <http://web.archive.org/web/20080520061150/http://wp.netscape.com/newsref/std/cookie_spec.html>`_ は RFC に比べると曖昧で、拒否要件や Cookie ヘッダ送出のための条件などがはっきり示されているわけではありませんが、 Netscape cookie の仕様に照らし合わせてみても、 cookie の保存や送出が制限されるような状況には思えません。
+
+このあたりの実装が RFC 2109 に強く準拠していたとしても、 Netscape cookie に準拠していたとしても、この状況で EZ ブラウザが cookie を送出しないのは明らかに不自然な挙動です。
+
+問題の整理
+==========
+
+ここまで説明した問題を整理すると、以下のようになります。
+
+1. W51SH で cookie が利用できなかったと思われる挙動が報告される
+2. これを受けて、 W51SH で HTTP 通信時と HTTPS 通信時の挙動を試したが再現しなかった (cookie が利用できる)
+3. misora でも HTTP 通信時と HTTPS 通信時に cookie が利用できることを確認した
+4. 後日、 misora で HTTPS 通信時に cookie が利用できなくなっていることが確認できた
+
+ちなみに、 W62SH では今のところこの現象を確認できていません。
+
+原因っぽいもの
+==============
+
+この問題の原因として、 cookie の保存容量や件数の制限を超過した場合の処理に問題がある可能性を考えました。
+
+なぜかというと、 cookie の保存先が HTTP 通信時と HTTPS 通信時で異なるからです。サーバ側のレスポンスは HTTP 通信時でも HTTPS 通信時でも変わりなく、しかし端末側の挙動だけが異なるということから、問題は cookie の保存処理にあると当たりをつけたのです。 HTTP 通信時、 cookie が EZ サーバに保存される場合、保存容量や有効期限などを考慮した cookie の取り回しは EZ サーバにおいておこなわれているでしょうし、逆に、 HTTPS 通信時の場合は端末側でそのような処理がおこなわれると思われるので、両者の挙動に差異があったとしても不思議な話ではありません。
+
+また、 W62SH では発生せず、 W51SH や misora で現象が発生したことから、プラットフォームとして KCP を採用している端末で発生しうるのではないかという仮説を持っています。
+
+現象が確認できている misora および W51SH のプラットフォームが KCP であるのに対し、 W62SH のプラットフォームは KCP+ です。両者の違いによるざっくりとした図解は `KDDI のニュースリリース <http://www.kddi.com/corporate/news_release/2007/1016d/sanko.html>`_ からうかがい知ることができますが、まあそれはどうでもよいです。
+
+KCP に搭載されているブラウザのベースはどうも Myriad Browser V6、 KCP+ のほうは Myriad Browser V7 であるように思います。どちらのプラットフォームも「アプリケーション」は「共通化部分」であるようなので、このあたりの実装はおそらく端末メーカーには任せられていないのでしょう。従って、この現象は KCP の問題、もしくは KCP がブラウザのベースに採用している Myriad Browser V6 の問題である可能性が非常に高いです。つまり、 KCP を採用する他の端末でも発生する可能性があると考えています。
+
+まあ、 W62SH で発生しないのは偶然と考えることもできます。正直言って、これだけの材料ではなんとも言い難いです。ただ、ベースになっているブラウザのバージョンが違ったり、プラットフォームが刷新されたりといったことで実装の違いが生まれ、結果として現象が発生しなくなった、というのは充分考えられることです。ということで、いまのところは「KCP 原因説」を掲げたいと思います。
+
+KDDI には問い合わせたが
+=======================
+
+実は KDDI にこの現象については報告しています。が、現在のところ解決していません。
+
+最初に KDDI お客さまセンターに問い合わせたときに「HTTPS 通信時に端末に保存された cookie が送出されなくなって困ってるんだけど、そういうバグある？　あとどう回避すればいい？　たとえば端末側の cookie を消すような操作ができれば回避できるかもだけどそういう機能ある？」というような質問を送ったら「EZブラウザの仕様について確認したいのね。でも EZ Factory に載せている情報以外は案内できないよ」「cookie は EZ サーバに保存されるから端末からは消せないよ」とかトンチンカンな回答がきて、その後のやりとりで「ケータイアップデート試せ」「電池パックを一度抜いて入れ直せ」と案内された挙げ句、「au ショップで点検・修理を頼め」と言われてしまいました。
+
+手元に現象が発生する貴重な端末があるのだからやすやすと手放すわけにもいかないし、 10 日近く粘ってこれだから技術部門へのエスカレーションとかはしてもらえないんだろうな、と諦めて、ブラウザベンダーである Myriad に頑張って英語で問い合わせることにしました。
+
+すると数日後、日本法人の Myriad Japan の担当者から日本語で返答が来て、その方の取り計らいによって、 KDDI の技術部門から回答がもらえるような状態にしてもらうことができました（ありがとうございます！）。
+
+そして改めて再質問したところ、以下のような回答が得られました。
+
+* 「Cookie保存領域の超過時の動作」は http://www.au.kddi.com/ezfactory/tec/spec/cookie.html に載せてあるとおりに処理をおこなっている
+* 類似事象の報告は受けていないため、保存領域の超過時の動作は正しく動作していると考えている
+* Mobile Browser 6.XX 系 (いわゆる EZ ブラウザの、 Myriad Browser 6 系ベースのもの) の cookie の仕様は Netscape 社の仕様と RFC2109 の仕様を組み合わせたような内容
+* Set-Cookie の内容が正しくない恐れがあるので確認してくれ（再質問のときに使った問い合わせフォームの文字数制限によってヘッダなどの詳細な情報を伝えられなかった）
+
+これに対してメールで、先述したような詳細な内容を伝えた（あと「メールによるやりとりが発生すればフォームの文字数制限とか設けても意味なくね？」というのも伝えた）ところ、 20 日近く経ってようやく返事が来ました。ちなみに例の F001 の件で、徳丸さんからの報告が KDDI に伝わった翌日の話です。
+
+* いただいた情報を元に調査を進めさせていただく
+* 事象が確認できた場合、 EZ Factory にて、仕様を展開させていただく
+
+というような回答でした。慌てて締めくくった感があってちょっと残念な展開ですね。
+
+同志募集
+========
+
+てなわけで、手元に HTTPS 通信で cookie の使えなくなった misora があり、同じような現象に遭遇したような報告が 1 件だけある、しかし KDDI に問い合わせてもよくわからなかった、という状況です。
+
+そこで、冒頭に書いた通り、「au 端末の EZ ブラウザで cookie が使えなくなって困ったりした経験をお持ちの方とか、そのあたりの情報を知っている方とか」を募集したいと思います。
+
+いまのところ僕は、
+
+* HTTPS 通信で
+* KCP を搭載した端末
+
+でこの現象が発生すると考えていますが、サンプルが少なすぎて正直なんとも言えません。 HTTP 通信でも KCP+ を搭載した端末でも発生するかもしれません。そのあたりの確証を得たいですし、アプリ側で回避策を採るにしても機種が絞れないことにはどうにもならないですし。
+
+ので、もしこの現象に遭遇したことがあったりする方がいらっしゃれば、ここのコメント欄なり Twitter で @co3k 宛につぶやくなり kousuke@co3k.org 宛のメールなりで教えていただけるとありがたいです。あと、できれば KDDI への問い合わせなどもしていただけるといいと思います。難しいようでしたら海老原が代行します。
+
+本件について続報があればまた記事を書こうと思います。

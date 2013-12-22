@@ -1,0 +1,79 @@
+===========================================================
+OpenPNE 3 プラグイン opHardeningPlugin 1.0.1 をリリースした
+===========================================================
+
+:date: 2013-05-19 19:56:31
+:slug: blog-30
+
+現行の OpenPNE 3 に不足している各種セキュリティ対策をカバーするためのプラグイン、 opHardeningPlugin 1.0.1 をリリースしました。
+
+クロスドメインから JSON コンテンツが読み取れる問題への対策について、バグ修正と軽微な機能追加を実施しています。
+
+以下の URL からダウンロードできます。ご活用ください。
+
+http://plugins.openpne.jp/release/502
+
+変更内容
+========
+
+* Fix: Android 標準ブラウザ向け JSON ハイジャック対策が適用されていない (Safeguard of JSON Hijacking attack for Android default browser is not applied)
+* Add: IE 9 および IE 10 向けに VB スクリプトを利用して JSON の内容を外部から読み取ることができる問題への対策の追加 (Added safeguard of JSON Array Information Disclosure Vulnerability in IE 9 and IE 10)
+
+変更内容についての説明
+======================
+
+Android 標準ブラウザ向け JSON ハイジャック対策が適用されていない
+----------------------------------------------------------------
+
+えー……修正コミットは https://github.com/ebihara/opHardeningPlugin/commit/26dc6dca1f309ea72c61cccdde02ed38b118ff45 なんですけれども、リクエストヘッダ ``User-Agent`` の値を確認する場面で、 ``$_SERVER['HTTP_USER_AGENT']`` を参照するべきところで、なんと馬鹿なことに ``$_SERVER['USER_AGENT']`` を参照していたのでチェックが無意味だったという大変お恥ずかしい問題ですね。さらに輪をかけて馬鹿なことにテストコードもそうなっていたので気がつかなかったということですね。というかブラウザ上での動作チェックを怠ってたという話ですね。ホントすいません。
+
+ということで、この対策については本来意図していたものがまったく機能していなかったということなので、 (まだ利用されている方は少ないと思いますが) この対策が必要な状況の方は早急なアップデートをおこなうことを推奨します。
+
+IE 9 および IE 10 向けに VB スクリプトを利用して JSON の内容を外部から読み取ることができる問題への対策の追加
+------------------------------------------------------------------------------------------------------------
+
+修正コミットは https://github.com/ebihara/opHardeningPlugin/commit/da02915a40f64004d3aa70e70359c370ac5db276 です。
+
+こちらの問題は `機密情報を含むJSONには X-Content-Type-Options: nosniff をつけるべき - 葉っぱ日記 <http://d.hatena.ne.jp/hasegawayosuke/20130517/p1>`_ にて解説されています。
+
+で、当該エントリのタイトルにて示されているように ``X-Content-Type-Options: nosniff`` をつけるべきで、このプラグインでも ``disable_content_sniffing`` を有効にしてさえいれば対策になります。
+
+ですが、このプラグインは個々の問題に対する解決策を有効／無効できる形で提供している関係で、 ``JSON_hijacking_protection`` 単体でも何らか防げるようにするべきだろうと考えて、 Android 標準ブラウザについて実施していた対策と同じものを IE 9 および IE 10 に対しても適用するようにしたものです (IE 9 や IE 10 であるかどうかは User-Agent 文字列によって判断します)。んが、この問題って JSON をハイジャックしているわけではないので JSON Hijacking ではないわけで、 ``JSON_hijacking_protection`` でやるのはおかしいんじゃないかと思いました。名前を変えるなり項目を分けるなりするかもしれません。でもやるとしたら 1.1 とか 1.2 とかだな。
+
+つーことで何が言いたいかというと、 ``X-Content-Type-Options: nosniff`` を出力すればいいだけの話で、このプラグインのようなスタンスでない限り、 User-Agent 文字列によってこの問題への対策をおこなう必要はないわけですが、他の場面で似たような対処をおこなう場合があるかもしれないし、ないかもしれないし、いやまあなさそうではあるんですが、誰かの役に立つかもしれないので技術的な解説をちょっとさせてください。
+
+以下の画像は、手元の IE 9 で検証してみたときの様子です。検証時の User-Agent 文字列も記載してあります。
+
+.. image:: https://lh4.googleusercontent.com/-4F7hhK-jUq0/UZiE3H1HdoI/AAAAAAAABL8/Fg9h6Vu6V3A/s528/WS-0518-000042.JPG
+
+問題が再現することと、 User-Agent 文字列が以下の形式であることが確認できます::
+
+    Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)
+
+それでもって、以下の画像が、その IE 9 で、互換表示を有効にした場合のものです。当然この場合も問題は再現するわけですが……
+
+.. image:: https://lh3.googleusercontent.com/-D_gx28NSq7M/UZiEgrwAyvI/AAAAAAAABLw/K0a8EsGegM4/s523/WS-0518-000041.JPG
+
+User-Agent 文字列が以下の形式に切り替わります::
+
+    Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; WOW64; Trident/5.0; SLCC2; CLR 2.050727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET 4.0C)
+
+ということで User-Agent 文字列が IE 7.0 ライクのものに切り替わるので、互換表示までカバーしたいのであれば、たとえば以下のような正規表現でもって、 IE 9 および IE 10 を識別することはできないわけですね::
+
+    /MSIE (?:9|10)\./
+
+ではどうすればいいか、ということが Microsoft の Web ページにて説明されています。
+
+まず IE 9 の場合の識別方法についてです。
+
+    互換性表示では、Internet Explorer 9 は互換性のために、アプリケーション バージョン番号 ("Mozilla/4.0" など) とバージョン トークン ("MSIE 7.0" など) を通じて Windows Internet Explorer 7 であると申告します。Trident トークンの値が引き上げられている ("Trident/4.0" から "Trident/5.0") ことから、Web サイトは互換表示で実行されている Internet Explorer 9 と互換表示で実行されている Internet Explorer 8 とを区別できます。
+
+    -- `Default User-Agent (UA) String Changed (Windows) <http://msdn.microsoft.com/ja-jp/library/ie/ff986085(v=vs.85).aspx>`_
+
+そして IE 10 の場合も同様の解説があります。
+
+    ユーザー エージェント文字列は、Internet Explorer 7 によってレポートされるユーザー エージェント文字列に似ていますが、Trident トークンは、Internet Explorer 10 を識別する "6.0" に設定されています。 
+
+    -- `Internet Explorer 10 のユーザー エージェント文字列 (Windows) <http://msdn.microsoft.com/ja-jp/library/ie/hh869301(v=vs.85).aspx>`_
+
+ということで、今回の変更では、 ``/trident\/[56]\./i`` にマッチするかどうかによって IE 9 または IE 10 であると識別するようにしたということです。

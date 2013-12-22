@@ -1,0 +1,142 @@
+=========================================
+Django のチュートリアルをやってみるよ (2)
+=========================================
+
+:date: 2013-12-15 23:51:58
+:slug: blog-36
+
+https://docs.djangoproject.com/en/1.6/intro/tutorial02/ からやっていきますよ。
+
+1. チュートリアル 2 章
+======================
+
+1-1. 管理画面
+-------------
+
+/admin/ にアクセスすると自動生成された管理画面にアクセスできるよ！　とか書いてあります。アドミンジェネレーターってやつですね (Django でどういう呼び方になっているのかわからないけど、特別な名前はないっぽい？)。
+
+最初に ``python manage.py syncdb`` したときに訊かれたアカウント情報をログイン画面に入力して入れました。このタイミングで管理画面も生成されたのかな？　``settings.py`` の ``INSTALLED_APPS`` に ``django.contrib.admin`` とかあるけどこれが生成してくれたってことなんだろうか。てことはたとえばこの機能が不要であれば ``INSTALLED_APPS`` から外すだけでいいってことになるんでしょうかね。実際問題こういうモデルの操作を直にやるような管理画面ってどのくらい使われるものなんだろう。
+
+初期状態では Django の認証フレームワークである groups と users テーブルの内容だけが編集できる状態ですが、アプリケーションの ``admin.py`` (チュートリアルの例だと ``polls/admin.py`` ) に管理画面の編集対象としたいモデルを登録することで、そのモデルに紐付いたテーブルの編集もできるようになりました::
+
+    from django.contrib import admin
+    from polls.models import Poll
+
+    admin.site.register(Poll)
+
+って、特にファイルを生成したりする必要はなく、設定ファイルの編集だけでうまくいくんですね。
+
+1-2. 管理画面を探検
+-------------------
+
+で、適当に見て回れって感じか。
+
+モデルの定義に従って自動生成されたフォームがあるよっていうのを PR されていますが、「ああ Django にもそういうのがあるのかー」ということであまり驚きがありません。
+
+編集用フォームを見てみると、 ``csrfmiddlewaretoken`` という CSRF 攻撃対策用フィールドがちゃんとあるのと、 id 用のフィールドが hidden ですら書き出されていないのがわかります。フォーム側で受け付けるフィールドを限定して、アプリケーションの想定外のフィールドに対する変更を受け付けないような機構 (いわゆる mass-assignment 対策) がちゃんとあるんじゃないかなあと想像します。
+
+CSRF 対策機構は「ミドルウェア」なんですね。 ``settings.py`` の ``MIDDLEWARE_CLASSES`` に ``django.middleware.csrf.CsrfViewMiddleware`` がいるようなので、この働きでトークンの検証機能が透過的に追加されたのでしょう。お、 ``django.middleware.clickjacking.XFrameOptionsMiddleware`` なんてのもいるぞ！　レスポンスヘッダを見てみると ``X-Frame-Options: SAMEORIGIN`` が確かに吐き出されてる。「ミドルウェア」は各アプリケーションにまたがって共通の機構を入出力に追加していったりとかそういう役割を担うものなのかな。
+
+管理画面の話に戻りますが、編集履歴がちゃんと残っているのもポイント高いですね。これは管理画面からの変更履歴のみを記録しているっぽいです。 DB 内のデータを見るとこんな感じ::
+
+    mysql> select * from django_admin_log;
+    +----+---------------------+---------+-----------------+-----------+-----------------------+-------------+-------------------+
+    | id | action_time         | user_id | content_type_id | object_id | object_repr           | action_flag | change_message    |
+    +----+---------------------+---------+-----------------+-----------+-----------------------+-------------+-------------------+
+    |  1 | 2013-12-15 13:11:33 |       1 |               7 | 2         | こんにちは       |           1 |                   |
+    |  2 | 2013-12-15 13:11:45 |       1 |               7 | 2         | こんにちは！？ |           2 | Changed question. |
+    +----+---------------------+---------+-----------------+-----------+-----------------------+-------------+-------------------+
+    2 rows in set (0.00 sec)
+
+1-3. 管理画面用フォームのカスタマイズ
+-------------------------------------
+
+先ほど編集した ``admin.py`` を編集してカスタマイズするらしいです。……え、この自動生成フォームって管理画面限定の機能だったりしないよね？　もちろんユーザー画面でも使いたいんですけど。
+
+まあ編集しますよ::
+
+    from django.contrib import admin
+    from polls.models import Poll
+
+    class PollAdmin(admin.ModelAdmin):
+        fields = ['pub_date', 'question']
+
+    admin.site.register(Poll, PollAdmin)
+
+これでフィールドの順番が指定したとおりに変わりましたけど、まあそういう当然予想が付く結果はどうでもいいとして、なんだこの ``ModelAdmin`` ってやつ。
+
+えっと先の内容はだいたい想像できるから、進む前に ``django.contrib.admin.site.register()`` の引数と ``django.contrib.admin.ModelAdmin`` が何者なのかが知りたいぞ。どうやって調べればいいんだろう。
+
+``ModelAdmin`` については https://docs.djangoproject.com/en/1.6/ref/contrib/admin/#modeladmin-objects があった。
+
+> The ModelAdmin class is the representation of a model in the admin interface.
+
+んー、なるほど。
+
+なんかフォームフィールドの設定みたいなイメージがあるから違和感があったんだけど、管理画面のインターフェースを設定するっていう見方であれば妥当なのかな。
+
+と思ったら ``actions_on_top`` とか ``list_editable`` とか ``list_filter`` みたいなプロパティ (オプション？) と、 ``form`` というプロパティが用意されていることに気がつきました。あー、なるほど、この ModelAdmin は管理画面のモデルに関するページ群に関する調整をおこなえて、フォームはフォームで必要であれば独立して設定できるのか。なるほど、それで完全に腑に落ちたぞ。
+
+``django.contrib.admin.site.register()`` についてはドキュメントのどこを見ればいいんだろう。よくわからなかったのでソースコードを見てみよう。
+
+と思って見てみたら ``django.contrib.admin.site.AdminSite.register()`` というメソッドが定義してあった。なんか間違えたかな？　と思ってざっと追ってみたら、::
+
+    # This global object represents the default admin site, for the common case.
+    # You can instantiate AdminSite in your own code to create a custom admin site.
+    site = AdminSite()
+
+あー、なるほど、django.contrib.admin.site でオブジェクトを参照できるようにしてるのか。というか ``django.contrib.admin.site.AdminSite.register()`` は Python でなんて呼べばいいのかわからないけどインスタンスメソッドみたいなやつっぽかった。
+
+メソッドの引数は以下のような感じ::
+
+    def register(self, model_or_iterable, admin_class=None, **options):
+
+``model_or_iterable`` ってことで複数のモデルを指定できるようでした。やっていることは諸々の検証をしたうえでレジストリに ``ModelAdmin`` を登録していくだけな感じですね。見た感じだと複数のモデル間で共通の ``ModelAdmin`` を適用できるんだろうか。
+
+というところである程度中身見られて満足なのでこの辺でチュートリアルに戻って適当にチュートリアルで指示されたフィールドをざざっと設定::
+
+    from django.contrib import admin
+    from polls.models import Poll
+
+    class PollAdmin(admin.ModelAdmin):
+        fieldsets = [
+            (None,               {'fields': ['question']}),
+            ('Date information', {'fields': ['pub_date'], 'classes': ['collapse']}),
+        ]
+
+    admin.site.register(Poll, PollAdmin)
+
+フィールドセットに分けられるんですねーってことと、フィールドセットに class 指定できるんですねーってところですね。
+
+1-4. リレーション
+-----------------
+
+Poll は複数の Coices と関連付いているので、それはどうするんだようって話ですね。
+
+さっきと同じようなノリで、単純に Choices を ``admin.site.register()`` で登録するだけでも Poll との関連づけの設定付きでレコードの追加がおこなわれますが、せっかくだから Poll の画面から直接編集したい！　ということで ``admin.StackedInline`` のサブクラスのオブジェクトを ``PollAdmin.inlines`` プロパティの値としてセットするとのこと。
+
+まあ https://docs.djangoproject.com/en/1.6/intro/tutorial02/#adding-related-objects と同じ結果になるわけですが、 Symfony でいうところの Embed Form みたいな感じになるんですね。あ、でもフォームをフィールドとして埋め込んでいるのとは違うっぽいな。 ``admin.StackedInline`` にもやっぱり form とかをプロパティで指定できるので、単純に ``ModelAdmin`` を埋め込んでいるようなイメージのほうが近いのかな。
+
+1-5. リスト表示のカスタマイズ
+-----------------------------
+
+``AdminSite.list_display`` をいじって任意のメソッドの出力をカラムとして追加したり、そのカラムの表示名の設定方法とかについて書いてある。この辺は適当に読むだけでいいか。
+
+あとは、 ``list_filter`` を以下のように指定することでフィルタリング対象のフィールドを設定できたり、::
+
+    list_filter = ['pub_date']
+
+``search_fields`` で検索対象のフィールドを指定できたりする。 LIKE 検索かー::
+
+    search_fields = ['question']
+
+あー、ここまでお膳立てされていると便利さがわかるなあ。権限周りとか、実際の運用とかでも上手く活用できるようになっているならいいんだけど。
+
+1-6. テンプレートのカスタマイズ
+-------------------------------
+
+Django のテンプレートシステム使っているから、テンプレートのカスタマイズは簡単だよーとかなんとか書いてある。
+
+で、 ``templates/admin/`` っていうディレクトリを作って、その中に ``base_site.html`` として Django の ``django/contrib/admin/templates/admin/base_site.html`` をコピーしてこいって書いてあるんだけど、テンプレートはこうやって上書きできるような機構って感じなのね。同じようにして index.html も上書きできると。
+
+今日はここまで。

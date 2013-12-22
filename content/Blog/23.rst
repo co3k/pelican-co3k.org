@@ -1,0 +1,234 @@
+=======================================================================================================
+次のプロジェクトで PHP 5.4 の採用を提案するための 3 つのポイント (PHP 5.4 Advent Calendar 2011 19 日目)
+=======================================================================================================
+
+:date: 2011-12-19 00:49:20
+:slug: blog-23
+
+PHP 5.4 Advent Calendar 2011 19 日目です。 前回は `@cocoitiban さん <https://twitter.com/#!/cocoitiban/>`_ でした。 `htmlspecialchars()` のオプション追加については個人的にも気になっていたところ（Symfony2 の https://github.com/symfony/symfony/commit/053b42158e2f887b54a3e87977303d219530082f というコミットで気づいた）で、ふむふむと読ませていただきました。たとえば、文書型を考慮するようになると SGML 的に (あれ、 HTML 的にだっけ？) 違法である NULL 文字とかがさっくり消えて、 `IE が NULL 文字を無視したりして XSS に繋がりうる問題 <http://gihyo.jp/admin/serial/01/charcode/0005>`_ が回避できるようになったりするんですかねえ。
+
+さて、これまでの Advent Calendar で触れられてきたように、 PHP 5.4 には魅力的な新機能が盛りだくさんです。
+
+しかし、実際に仕事で使うのが PHP 5.3 だったり PHP 5.2 や PHP 5.1 だったり（えーと新規プロジェクトで PHP 4 ってことはないですよね）では、 PHP 5.4 の魅力的な新機能を使うことができません。たとえば、 RHEL の標準パッケージを使用するようなポリシーの場合、 PHP 5.4 が利用できるようになるのは下手したら 2 年後ということにもなりかねません。
+
+はい、見えますよ！　僕には PHP 5.4 が使えなくて毎日イライラして食事も仕事も手につかない、そんなみなさんの未来が見えます！　いまは「PHP 5.4 は正式リリースされてないから……」とか自分を誤魔化しているかもしれませんが、正式リリース後にもそんな態度を貫き通せるでしょうか？　PHP 5.4 がなまじ魅力的なだけに、旧バージョンを使う苦しみはより強いものとなって現れるでしょうね。
+
+たとえば……
+
+* つい配列定義を short syntax で書いてしまい、 "unexpected '['" エラーの嵐
+* ``(new DateTime())->format("Y-m-d H:i:s")`` とかやってしまい、 "unexpected T_OBJECT_OPERATOR" エラーの嵐
+* ``callback`` 型として正しい配列変数に対して ``()`` でアクセスしようとして "Fatal error" エラーの嵐
+* Trait が使えないために実装の再利用が容易にできず、あちこちで委譲が大量発生……だけならまだよくて、最悪コピペコードだらけに
+
+ああ恐ろしいですね。
+
+しかし、よく紹介される PHP 5.4 の魅力といえば、ほとんどがプログラマ視点のものであり、実際にプロジェクトへの採用を検討、決定する、上司やサーバ管理者、クライアントには今ひとつ響かないポイントが多いかもしれません。
+
+そこで、新規プロジェクトで PHP 5.4 の採用を提案する際に、機能面以外でアピールポイントとなりそうなものを考えてみました。
+
+1. 速い
+=======
+
+PHP 5.4 ではパフォーマンスの改善がおこなわれています、ということが随所で報告されていますね。
+
+* `PHP5.4 で Symfony2 は速くなるのか？ : 今日も適当ダイアリー <http://blog.madapaja.net/2011/12/php54-symfony2.html>`_ では、テストの実行時間が 3 割減、メモリは 5 割減という素晴らしい調査結果が示されています
+* `DSAS開発者の部屋:チューニンガソンで優勝してきました <http://dsas.blog.klab.org/archives/51978647.html>`_ では、 PHP 5.4 で WordPress を動作させることによって、高いパフォーマンスを叩き出した事例が紹介されています
+
+しかし、具体的に、どうパフォーマンスが改善しているのでしょうか？
+
+NEWS ファイルからパフォーマンスに関する変更っぽいものを抜き出してみましょう。
+
+まず、
+
+    Improve ternary operator performance when returning arrays.
+    (配列返却時の三項演算子のパフォーマンス改善)
+
+です。
+
+この件については、 http://marc.info/?l=php-internals&m=131037062716236&w=2 から参照できる議論や、 Symfony2 の lead である `Fabien Potencier 氏のブログエントリ <http://fabien.potencier.org/article/48/the-php-ternary-operator-fast-or-not>`_ が参考になります。特定の状況で、 ``if`` 文の場合に比べて三項演算子のパフォーマンスが極端に低下する、というものです。
+
+その理由として、 Fabien 氏のブログでは以下のように考察されています。
+
+    So, why does the ternary operator become so slow under some circumstances? Why does it depend on the value stored in the tested variable?
+    （さて、なぜ特定の条件下で三項演算子がこれだけ遅くなるのでしょうか？　なぜそれが検査する変数に格納された値に依存するのでしょうか？）
+
+    The answer is really simple: the ternary operator always copies the value whereas the if statement does not. Why? Because PHP uses a technique known as copy-on-write: When assigning a value to a variable, PHP does not actually create a copy of the content of the variable until it is modified.
+    （その答えは実に単純です——三項演算子は、 if 文がそうしない状況であっても、常に値をコピーするからです。どうしてでしょうか。それは、 PHP が、「変数に値をアサインする際、その値を変更するまで、PHP はその中身のコピーを本当に作っているわけではない」という、"copy-on-write" として知られるテクニックを使っているからです）
+
+    -- `The PHP Ternary Operator: Fast or not? - Fabien Potencier <http://fabien.potencier.org/article/48/the-php-ternary-operator-fast-or-not>`_
+
+Arnaud 氏によれば、
+
+    Currently the ternary operator does a copy of its second and third operands.
+    （現在の三項演算子は第二オペランドと第三オペランドのコピーをおこないます）
+
+    This is costly when the operand is an array for example (the array has to be copied, and all its elements addref'ed).
+    （これはオペランドがたとえば配列の場合にコストになります（配列はコピーされると、すべての要素が addref される））
+
+    -- `'[PHP-DEV] Re: Ternary operator improvements' - MARC <http://marc.info/?l=php-internals&m=131038047526234&w=2>`_
+
+ということです。
+
+そして、この問題の改善が PHP 5.4 でおこなわれたということですね。素晴らしいことです。早速 Fabien 氏のブログに追試結果を書こうと思ったら、最新の記事以外にコメント書けないんですね＞＜　ということでせっかくなので下に貼っておきます::
+
+    Hi,
+
+    I've tested in the benchmark script in PHP 5.4.0RC3. (I changed the first line to `$context = array('test' => array())` and the last line to `printf("TIME: %0.2f\n", (microtime(true) - $time) * 1000)`. Did you make mistakes when you paste it?)
+
+    * In PHP 5.3.6 : TIME: 2303.92
+    * In PHP 5.4.0RC3 : TIME: 0.03
+
+この問題に気づかずに三項演算子を使用しているプロジェクトでは、大きな改善が見られる可能性があります。
+
+さて、次に見ていきたいのはこれです。
+
+    Improved unserialize() performance.
+    （unserialize() のパフォーマンス改善）
+
+この変更は、もともと https://bugs.php.net/bug.php?id=52832 で PHP 5.3 のバグとして報告されたものですが、変更が `ABI <http://ja.wikipedia.org/wiki/Application_Binary_Interface>`_ を壊すために PHP 5.3 には取り込まれず、代わりに PHP 5.4 でパッチが取り込まれることになりました。
+
+unserialize 後のデータのサイズに応じて高い割合で ``unserialize()`` のコストが増大する（バグレポートで示されているデータでは、最悪のケースで ``unserialize()`` のコストが ``serialize()`` の 11 倍）という問題です。パッチ後には大幅な改善が見られ、最悪のケース同士の比較で 25 倍ほどの高速化がおこなわれています。
+
+``serialize()`` や ``unserialize()`` はキャッシュ等の用途で使われることが多く、というか PHP 自身もセッションデータをシリアライズしているわけで、この変更によっても大きなパフォーマンスの改善が期待できることでしょう。
+
+そして、次なるパフォーマンス改善は、
+
+    Improved Zend Engine memory usage: (Dmitry)
+    Improved Zend Engine, performance tweaks and optimizations: (Dmitry)
+
+Zend Engine に対するパフォーマンス改善です。数が多いし、このあたりになると解説できるほど詳しくもないので、興味がある方は各自ご覧ください。どのあたりが改善されたのか、またあらためてじっくり見ていこうかなと思っていますが、
+
+    Added caches to eliminate repeatable run-time bindings of functions, classes, constants, methods and properties.
+    （関数、クラス、定数、メソッド、プロパティの、実行時に繰り返しおこなわれるバインドを削減するためのキャッシュを追加）
+    
+なんて、僕が最近頭を悩ませていた、これらの初期化コストの改善に繋がっていたりするのではないかと期待しています。
+
+チューニングといえば DB のボトルネック改善が目立ちがちですが、全体的なパフォーマンスの向上のためにはウェブサーバ側のチューニングも欠かせません。 PHP 5.4 を採用すれば、サーバ台数を減らして経費削減！　なんてこともできるかもしれませんよ。
+
+2. セッション ID の生成がデフォルトでセキュアに
+===============================================
+
+「いままでセキュアじゃなかったのかよ！」と驚かれる方がいらっしゃるかもしれませんが、まあ、そうですね。
+
+    PHPのセッションID生成は、
+
+    sprintf(buf, "%.15s%ld%ld%0.8f", remote_addr ? remote_addr : "", tv.tv_sec, (long int)tv.tv_usec, php_combined_lcg(TSRMLS_C) * 10);
+
+    なんて感じで、マイクロ秒単位の現在時刻＋ユーザーのリモートアドレス＋combined-LCG（線形合同法による乱数2つを組み合わせているらしい。線形合同法自体は、疑似乱数生成方法としてはセキュアな方法ではないとされている）による乱数を使って生成されているんだけど、
+
+    -- http://blog.ishinao.net/2006/11/20/#p01
+
+のとおり、セッション ID のエントロピーにセキュアな値が使われていません。
+
+生成されるセッション ID に予測可能性があるということは、ログイン機能を有するようなウェブアプリケーションとしては非常に致命的な問題ですよね。ということで、非常に致命的な状態だったんですね、はい。
+
+ちなみに、この状態でセキュアな値をエントロピーにするためには、 PHP の設定 ``session.entropy_file`` で、
+
+    php.iniとかで、
+
+    session.entropy_file = /dev/urandom
+    session.entropy_length = 16
+
+    とか設定しておけば、そっちも組み合わせて使われます
+
+    -- http://blog.ishinao.net/2006/11/20/#p01
+
+ということで、 ``/dev/urandom`` のように、 OS の提供するセキュアな疑似乱数生成器を使うようにすれば、現状でもセキュアなセッション ID の生成ができるようになります。
+
+まあそのうち言語側で改善されるだろうと思っていたのですが、やっと PHP 5.4 で、
+
+    Changed session.entropy_file to default to /dev/urandom or /dev/arandom if either is present at compile time. (Rasmus)
+    （/dev/urandom と /dev/arandom のどちらかをコンパイル時に session.entropy_file のデフォルトとするように変更）
+
+という変更が加わるようになりました。よかったですね！
+
+ということで、 PHP 5.4 にすればセッション ID がセキュアに生成されるようになりますよ！　よって PHP 5.4 を採用した方がいいですよ！　と熱心に訴えかければ問題ないです。「いや、うちはもう ``session.entropy_file`` に ``/dev/urandom`` 指定してるよ」とか言われたらアウトですが、こんなマイナーな設定を知っている人なんてきっとごくわずかです。万が一言われたとしたら、その人がこのエントリを見ているか、もしくはあなたが `追手内洋一 <http://ja.wikipedia.org/wiki/%E3%83%A9%E3%83%83%E3%82%AD%E3%83%BC%E3%83%9E%E3%83%B3#.E8.BF.BD.E6.89.8B.E5.86.85.E6.B4.8B.E4.B8.80.EF.BC.88.E3.81.A4.E3.81.84.E3.81.A6.E3.81.AA.E3.81.84_.E3.82.88.E3.81.86.E3.81.84.E3.81.A1.EF.BC.89>`_ 級のついてなさを発揮している可能性が非常に高いのでいずれにしてもいろいろ諦めてください。
+
+あと、セキュアといえば `mbstring 拡張で冗長な UTF-8 の処理が改善 <http://d.hatena.ne.jp/rui_hi/20110806/1312595692>`_ されています。 `id:t_komura さんによる調査結果 <http://d.hatena.ne.jp/t_komura/20110812/1313125578>`_ も見ていただけるとどう改善されたのかわかりやすいと思います。
+
+ただし、文字エンコーディングのセキュリティ問題は重要ですがわかりにくい点でもあり、そして PHP 5.3 においてもある程度の対策がとられているものでもあるので、提案時のアピールポイントとするにはちょっと難しいかもなと思いました。このあたりの問題については、はせがわようすけ氏による `『本当は怖い文字コードの話』 <http://gihyo.jp/admin/serial/01/charcode>`_ の連載がわかりやすいのでご一読されることをお勧めします。
+
+3. 安定しているはず
+===================
+
+PHP は `5.3.7 でやらかして <http://blog.tokumaru.org/2011/08/php537cryptbug-55439.html>`_ しまいましたが、
+
+    コードカバレッジ、テストの失敗、valgrindのレポートなどをきちんととっている。だけど、テストの失敗を調査せずにリリースをしてしまったというわけだ。やっていても見なければ意味がない、という残念な結果になっているが、どうしてそうなのかというのが面白い。つまり、バグレポートが上がってくると、その時点で(直す前にまず)テストケースを足していくという開発スタイルなのだと。したがってテストの失敗が無数にあるのが常態化していたというわけだ。
+
+    このスタイルを崩すつもりはないが、バグレポートによる失敗ケースは基本的に失敗するのが前提なので、これをXFAIL(expected fail)なんかに変えることで、失敗することが期待される部分と、本当のバグが分離できるだろうとのこと。
+
+    -- `PHP 5.3.7のcryptについて、作者のメモ @ val it: α → α = fun <http://www.jmuk.org/diary/index.php/2011/08/27/rasmus-memo-about-php-5-3-7-crypt/>`_
+
+ということで、もう ``crypt()`` の件のような失敗は犯さなくて済むはずです（ちなみに XFAIL 自体は昔からあった（PHP 5.3.6 で ``make test`` したら XFAIL 出てた）ようで、失敗することが前提のテストはもっとちゃんと XFAIL として扱うようにしましょうよってことなんですかね）。
+
+以下、 PHP 5.4.0RC3 で make test してみた結果です::
+
+    =====================================================================
+    TEST RESULT SUMMARY
+    ---------------------------------------------------------------------
+    Exts skipped    :   43
+    Exts tested     :   34
+    ---------------------------------------------------------------------
+
+    Number of tests : 12019              9142
+    Tests skipped   : 2877 ( 23.9%) --------
+    Tests warned    :    2 (  0.0%) (  0.0%)
+    Tests failed    :   15 (  0.1%) (  0.2%)
+    Expected fail   :   37 (  0.3%) (  0.4%)
+    Tests passed    : 9088 ( 75.6%) ( 99.4%)
+    ---------------------------------------------------------------------
+    Time taken      :  837 seconds
+    =====================================================================
+
+ちなみに PHP のスナップショットに対するテスト結果とコードカバレッジについては http://gcov.php.net/ から見ることができます。
+
+PHP 5.4 の結果を見てみましょう::
+
+    Overview of PHP_5_4
+
+    Build Status: OK
+    Last Build Time: 45 hours
+
+    Compile Warnings: 1125
+    Code Coverage: 70.1%
+    Test Failures: 90
+    Expected Test Failures: 44
+    Valgrind Reports: 57
+
+    -- `Overview of PHP_5_4 <http://gcov.php.net/viewer.php?version=PHP_5_4>`_
+
+ちなみに、 PHP 5.3 を見てみると::
+
+    Overview of PHP_5_3
+
+    Build Status: OK
+    Last Build Time: 46 hours
+
+    Compile Warnings: 1212
+    Code Coverage: 70.3%
+    Test Failures: 77
+    Expected Test Failures: 41
+    Valgrind Reports: 51
+
+    -- `Overview of PHP_5_3 <http://gcov.php.net/viewer.php?version=PHP_5_3>`_
+
+あ、あ、あ、あれ！？　PHP 5.3 のほうが Test Failures が少ないし Code Coverage も上だ！
+
+でも、ほら、「といっても PHP の新しいバージョンなんてどうせ安定してないんじゃないの？」とか言われても、「大丈夫です、コード量が増えてもコードカバレッジは 70.1% で、 0.2 % しか低下していません！　いくら PHP といえどテストはちゃんと書いてます！」とは言えるはずです。きっと！
+
+ちなみに、テストの総量については PHP 5.3.8 が 11660 なのに対して 12019 ですから、テストが書かれていることは間違いないです。 PHP を信じてあげてください。
+
+まとめ
+======
+
+ということでアピールポイントを強引に 3 点挙げてみました。
+
+* 速い（これは自信もっていいと思います）
+* セキュア（いろいろな改善点はあるんですが PHP 5.3 でも取り込まれてるんだよなあ）
+* 安定しているはず（いや、少なくとも不安定にはなっていないと……）
+
+ここで挙げた事項に、 PHP 5.4 でみなさんの作業がどの程度効率化するかなどを盛り込めば、きっと魅力的な提案になるんじゃないでしょうか。頑張ってください！　僕も頑張ります！
+
+仕事でもプライベートでも PHP 5.4 が触れる、そんな幸せな日常がみなさんに訪れるといいですね！（え、「プライベートで PHP なんて触りたくない」？　「できれば仕事でも PHP から逃れたい」？　あ、はい、すいません……）
+
+次は `@yuya_takeyama さん <https://twitter.com/#!/yuya_takeyama>`_ です！

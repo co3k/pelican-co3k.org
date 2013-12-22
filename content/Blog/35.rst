@@ -1,0 +1,481 @@
+=========================================
+Django のチュートリアルをやってみるよ (1)
+=========================================
+
+:date: 2013-12-13 06:59:20
+:slug: blog-35
+
+Django 自体にはかなり興味があって、コードはちょくちょく拾い読みしていたりとか、 https://docs.djangoproject.com/en/1.6/topics/security/ とか、個人的に認証周りのセキュリティ関連の修正で興味深いものが 2 件ほど出ていたので [1]_, [2]_ そのあたりは追いかけていたのだけれど、実際に Django を使って何か作ってみたことがあるわけではないので、ちょっとチュートリアルをはじめてみたよ。
+
+もくもくとチュートリアルをなぞるだけになるかなと思ったけど、後で調べないといけないこととか、チュートリアルの手順をすっ飛ばして関連するトピックに移ったりとかで結構ちゃんとメモを取っておく必要が出てきたので備忘録的に試行錯誤の過程とかをブログエントリにします。
+
+1. インストール
+===============
+
+https://docs.djangoproject.com/en/1.6/topics/install/#installing-official-release の手順に従ってインストールします。ちなみに環境は仮想マシン上の Debian (wheezy) です。
+
+まず ``pip`` をインストールせよとのことなので ``apt`` でぱぱっと入れちゃう::
+
+    # apt-get install python-pip
+
+``virtualenv`` とか ``virtualenvwrapper`` は (optional) になっているしまあ入れなくていいや、と思って入れてないです。まあそもそも仮想マシン上だし、まあいいかなと。慣れてきて必要になってきたら入れよう。
+
+ということで続いては Django のインストール::
+
+    # pip install Django
+
+ドキュメントによれば、
+
+> This will install Django in your Python installation’s site-packages directory.
+
+ってことなので脱線してちょっと見てみようと思ったらややハマってしまいました。
+
+``site-packages`` とかが ``/usr/lib`` 以下にいたりするんでしょっていうのは、なんとなく使っていくなかでなんとなく知っていて、でもちゃんと調べる方法を身につけたいので http://docs.python.org/2/install/#how-installation-works あたりを見てみることに。
+
+どうも ``php -i`` 的な感じで調べる手段はないっぽく、インタラクティブシェルで適当に情報を参照して出力してよって感じなんですかね。とりあえず prefix と exec-prefix とバージョン番号の X と Y を確認すればわかるということなので、以下のような感じで出力してみました::
+
+    $ python
+    Python 2.7.3 (default, Jan  2 2013, 13:56:14)
+    [GCC 4.7.2] on linux2
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import sys
+    >>> sys.prefix
+    '/usr'
+    >>> sys.exec_prefix
+    '/usr'
+    >>> sys.version
+    '2.7.3 (default, Jan  2 2013, 13:56:14) \n[GCC 4.7.2]'
+
+(バージョン番号はわざわざ確認するまでもなくシェル起動時のメッセージとして出力されているけどまあ気にしない)
+
+ということは ``/usr/lib/python2.7/site-packages`` に Django がいるんじゃないか、と踏んで調べてみてもディレクトリは空で、インストールされていないのかなーと思って https://docs.djangoproject.com/en/1.6/intro/install/#verifying の手順で確認してみると、::
+
+    >>> import django
+    >>> print(django.get_version())
+    1.6
+
+このようにちゃんと Django が使えるよという状態。
+
+諸々探していると http://stackoverflow.com/questions/739993/get-a-list-of-installed-python-modules に行き当たり、
+
+> Also this will not show built-in modules, or modules in a custom PYTHONPATH, or ones installed in setuptools "development mode" etc.
+
+ということでモジュールがあるからといって ``site-packages`` に存在するとは限らないことを知る。じゃあどうやって探せばいいのだー。
+
+モジュールの存在自体は一番上の回答にある以下のコマンドを試してみることで確かめられたのですが……::
+
+    >>> help('modules')
+    >>> help('modules django')
+
+しょうがないので http://docs.python.org/2/tutorial/modules.html とか読んでみると、
+
+> After initialization, Python programs can modify sys.path
+
+ということでした。なにかあるんじゃないかとインタラクティブシェルで試してみると、::
+
+    >>> import sys
+    >>> sys.path
+    ['', '/usr/lib/python2.7', '/usr/lib/python2.7/plat-linux2', '/usr/lib/python2.7/lib-tk', '/usr/lib/python2.7/lib-old', '/usr/lib/python2.7/lib-dynload', '/usr/local/lib/python2.7/dist-packages', '/usr/lib/python2.7/dist-packages', '/usr/lib/pymodules/python2.7']
+
+なんかよくわからないディレクトリ群が出てきた！　このなかに Django が眠っているんじゃなかろうかってことで、::
+
+    $ python -c 'import sys; print "\n".join(sys.path)' | xargs ls
+
+とかしてみたら、::
+
+    /usr/local/lib/python2.7/dist-packages:
+    django	Django-1.6.egg-info
+
+出てきたー！！　って ``dist-packages`` ってなんなんだー！！　なんか見覚えあるぞー！
+
+ということでググって出てきた http://stackoverflow.com/a/9388115 の回答を読んでみると、
+
+> dist-packages is a Debian-specific convention ... Modules are installed to dist-packages when they come from the Debian package manager ... Since easy_install and pip are installed from the package manager, they also use dist-packages, ...
+
+ほう！　なるほど！！　なんて面倒なことを！
+
+まあ何はともあれこれで利用している Django のコードまでちゃんと追えるようになりました。
+
+ということで脱線はここまでにしてチュートリアルに突入します。
+
+2. チュートリアル 第 1 章
+=========================
+
+2-1. プロジェクト生成
+---------------------
+
+まず https://docs.djangoproject.com/en/1.6/intro/tutorial01/#creating-a-project に従ってプロジェクトのひな形の生成です::
+
+    $ django-admin.py startproject co3k_site
+    $  tree
+    .
+    `-- co3k_site
+        |-- co3k_site
+        |   |-- __init__.py
+        |   |-- settings.py
+        |   |-- urls.py
+        |   `-- wsgi.py
+        `-- manage.py
+
+まあこのあたりはありがちな感じですね。
+
+生成されたファイルの役割もざっと確認しました。まあ詳しくはそのうち触れるんだろうし先に進みます。
+
+2-2. 開発用サーバ
+-----------------
+
+https://docs.djangoproject.com/en/1.6/intro/tutorial01/#the-development-server の手順に従って開発用サーバを立ちあげます::
+
+    $ cd co3k_site
+    $ python manage.py runserver
+    Validating models...
+
+    0 errors found
+    December 12, 2013 - 06:59:20
+    Django version 1.6, using settings 'co3k_site.settings'
+    Starting development server at http://127.0.0.1:8000/
+    Quit the server with CONTROL-C.
+
+あ、ってこれ仮想マシンのゲストなので ``127.0.0.1`` をリッスンしている状態だとホストマシンから繋げないぞ。
+
+ということでドキュメントに戻ると、どうすればいいかが普通に書いてありました。
+
+> If you want to change the server’s IP, pass it along with the port. So to listen on all public IPs (useful if you want to show off your work on other computers), ...
+
+おｋ把握した::
+
+    $ python manage.py runserver 192.168.37.4:8080
+
+動いたー！　ホストマシンの Firefox から閲覧できたー！！
+
+2-3. データベースのセットアップ
+-------------------------------
+
+次に進みます。今度はデータベースのセットアップのために ``settings.py`` を編集するらしいですよ::
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }
+
+というのがデフォルト設定で、まあこのままで動くんだろうけど、せっかくだから俺は MySQL を選ぶぜ！
+
+> If you are not using SQLite as your database, additional settings such as USER, PASSWORD, HOST must be added. 
+
+ということなのでとりあえずこの 3 つは追加するとして、あと DB 接続時の文字コード設定とかない感じかな？
+
+https://docs.djangoproject.com/en/1.6/ref/databases/ とかまで掘ってみたけどなさそう？　うーん、まあどうせ utf-8 だろう。でもって少なくともこれから書くコードは頭からつま先まで入出力含めて utf-8 だろう。ということであとで調べることにして先に進みます。
+
+とりあえずこんな感じの設定にしておいて、::
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'co3k_site',
+            'USER' : 'root',
+            'PASSWORD' : '',
+            'HOST' : 'localhost',
+        }
+    }
+
+DB 作って、::
+
+    $ echo "CREATE DATABASE co3k_site DEFAULT CHARACTER SET utf8" | mysql -u root --default-character-set=utf8
+
+> While you’re editing mysite/settings.py, set TIME_ZONE to your time zone.
+
+おっと、 ``TIME_ZONE`` の設定もするのですね (参照: https://docs.djangoproject.com/en/1.6/ref/settings/#std:setting-TIME_ZONE)::
+
+    TIME_ZONE = 'Asia/Tokyo'
+
+Also, note the INSTALLED_APPS setting at the top of the file ... とか書いてありますが、けどまあこれはとりあえずいいや。こういうのがデフォルトで設定されているよ、くらいですね。まあこのへんもだいたいわかる。
+
+で、この辺のアプリケーションがテーブル定義を何かしら持ってるだろうから、以下のコマンドで自動生成できるわけですね。やってみよう::
+
+    $ python manage.py syncdb
+    Traceback (most recent call last):
+      File "manage.py", line 10, in <module>
+        execute_from_command_line(sys.argv)
+      File "/usr/local/lib/python2.7/dist-packages/django/core/management/__init__.py", line 399, in execute_from_command_line
+        utility.execute()
+      **SNIP**
+      File "/usr/local/lib/python2.7/dist-packages/django/db/backends/mysql/base.py", line 17, in <module>
+        raise ImproperlyConfigured("Error loading MySQLdb module: %s" % e)
+    django.core.exceptions.ImproperlyConfigured: Error loading MySQLdb module: No module named MySQLdb
+
+あー、はいはい。コマンド叩く前からこういうエラーは出そうな気がしていましたよ。
+
+``mysql-python`` というパッケージが必要らしいのでインストール::
+
+    $ sudo pip install mysql-python
+
+と思ったら依存パッケージが古い的なエラーが出たので指示通りに以下を実行します。そういや ``easy_install`` とか ``pip`` とかで入れたパッケージのアップデートとかの日々のメンテナンスってどうしていくものなんだろう。これもあとで調べます::
+
+    $ sudo easy_install -U distribute
+
+で、今度は ``mysql_config`` がないとか ``Python.h`` がないとか出てきたのでその辺をざざっとインストールして (``libmysqlclient-dev`` と ``python-dev`` を ``apt`` で入れた)、無事に ``mysql-python`` のインストールも完了::
+
+    $ sudo pip install mysql-python
+    **SNIP**
+    Successfully installed mysql-python
+
+ということで改めてテーブルの自動生成へ::
+
+    $ python manage.py syncdb
+    Creating tables ...
+    Creating table django_admin_log
+    Creating table auth_permission
+    Creating table auth_group_permissions
+    Creating table auth_group
+    Creating table auth_user_groups
+    Creating table auth_user_user_permissions
+    Creating table auth_user
+    Creating table django_content_type
+    Creating table django_session
+
+    You just installed Django's auth system, which means you don't have any superusers defined.
+    Would you like to create one now? (yes/no): yes
+    Username (leave blank to use 'vagrant'): co3k
+    Email address: kousuke@co3k.org
+    Password:
+    Password (again):
+    Superuser created successfully.
+    Installing custom SQL ...
+    Installing indexes ...
+    Installed 0 object(s) from 0 fixture(s)
+
+うまくいったようです。途中 ``auth_user`` っぽいアプリケーションからいろいろ訊かれてるけど、まあ、アプリケーションからこういう処理を挟めるようなフック機構があるんですねーぐらいで捉えておけばいいかな。
+
+一応どんな感じのテーブルができたのか覗いてみますね::
+
+    mysql> show tables;
+    +----------------------------+
+    | Tables_in_co3k_site        |
+    +----------------------------+
+    | auth_group                 |
+    | auth_group_permissions     |
+    | auth_permission            |
+    | auth_user                  |
+    | auth_user_groups           |
+    | auth_user_user_permissions |
+    | django_admin_log           |
+    | django_content_type        |
+    | django_session             |
+    +----------------------------+
+    9 rows in set (0.00 sec)
+
+    mysql> desc auth_user;
+    +--------------+--------------+------+-----+---------+----------------+
+    | Field        | Type         | Null | Key | Default | Extra          |
+    +--------------+--------------+------+-----+---------+----------------+
+    | id           | int(11)      | NO   | PRI | NULL    | auto_increment |
+    | password     | varchar(128) | NO   |     | NULL    |                |
+    | last_login   | datetime     | NO   |     | NULL    |                |
+    | is_superuser | tinyint(1)   | NO   |     | NULL    |                |
+    | username     | varchar(30)  | NO   | UNI | NULL    |                |
+    | first_name   | varchar(30)  | NO   |     | NULL    |                |
+    | last_name    | varchar(30)  | NO   |     | NULL    |                |
+    | email        | varchar(75)  | NO   |     | NULL    |                |
+    | is_staff     | tinyint(1)   | NO   |     | NULL    |                |
+    | is_active    | tinyint(1)   | NO   |     | NULL    |                |
+    | date_joined  | datetime     | NO   |     | NULL    |                |
+    +--------------+--------------+------+-----+---------+----------------+
+    11 rows in set (0.00 sec)
+
+うん、なんかできている。
+
+2-4. モデルの作成
+-----------------
+
+ということで https://docs.djangoproject.com/en/1.6/intro/tutorial01/#creating-models に進みます。
+
+プロジェクトとアプリケーションの違いについて書いてあるのでふむふむとか言いながら読みました。アプリケーションが複数プロジェクトに属すこともできるってことは、書き方次第でいろんなプロジェクトから再利用可能な機能をアプリケーションとして作って保守みたいなことができるってことですかね。いいですね。
+
+とりあえず実行例をなぞります::
+
+    $ python manage.py startapp polls
+
+んん？　複数系？　あーこれきっとモデルの場合は単数形になる系のやつですね。あんまり好みじゃないなあ。あと成功したならなんかメッセージ出してほしいなあ。
+
+ともあれなんかディレクトリ 1 個できてた::
+
+    $ tree
+    .
+    |-- co3k_site
+    |   |-- __init__.py
+    |   |-- __init__.pyc
+    |   |-- settings.py
+    |   |-- settings.pyc
+    |   |-- urls.py
+    |   |-- urls.pyc
+    |   |-- wsgi.py
+    |   `-- wsgi.pyc
+    |-- manage.py
+    `-- polls
+        |-- admin.py
+        |-- __init__.py
+        |-- models.py
+        |-- tests.py
+        `-- views.py
+
+モデルがうんたらかんたらで DRY がどうたらこうたらって話はそりゃそうだろって感じなので斜め読みしました。知ってたわー、 X 年前から知ってたわー。
+
+で、 ``polls/models.py`` 内にモデルの定義を書くわけですね。テーブルがクラスに、各フィールドがクラスの各プロパティ的なところ (Python でこれはなんて呼ぶんでしたっけ？) にそれぞれ対応していると。これ ``models.*`` とかを値にしなければ DB とは独立してプロパティ的な奴に値を入れられるんでしょうね。うん、きっとそうだ。
+
+ということでこれもチュートリアルをそのままなぞります。……なんの面白みもない感じですけどこういうところで変なオリジナリティ出してキャッキャする歳でもないんですよもう::
+
+    from django.db import models
+
+    class Poll(models.Model):
+        question = models.CharField(max_length=200)
+        pub_date = models.DateTimeField('date published')
+
+    class Choice(models.Model):
+        poll = models.ForeignKey(Poll)
+        choice_text = models.CharField(max_length=200)
+        votes = models.IntegerField(default=0)
+
+で、このモデルをアクティベートすると。 ``co3k_site/settings.py`` を編集してアプリケーションに ``polls`` を追加して……::
+
+    INSTALLED_APPS = (
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+        'polls',
+    )
+
+というか ``INSTALLED_APPS`` の下に ``MIDDLEWARE_CLASSES`` とかいう項目があるけどこれはなんだろう。ミドルウェアってなんぞや。再利用性を意識するならこっちなのかな。まああとで調べる。いまはいいや。
+
+んでもって ``$ python manage.py sql polls`` で、テーブルの自動生成時にどういう SQL が実行されるかが出てくるというわけですね::
+
+    $ python manage.py sql polls
+    BEGIN;
+    CREATE TABLE `polls_poll` (
+        `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        `question` varchar(200) NOT NULL,
+        `pub_date` datetime NOT NULL
+    )
+    ;
+    CREATE TABLE `polls_choice` (
+        `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        `poll_id` integer NOT NULL,
+        `choice_text` varchar(200) NOT NULL,
+        `votes` integer NOT NULL
+    )
+    ;
+    ALTER TABLE `polls_choice` ADD CONSTRAINT `poll_id_refs_id_3aa09835` FOREIGN KEY (`poll_id`) REFERENCES `polls_poll` (`id`);
+
+    COMMIT;
+
+内容を確認して OK であれば ``syncdb`` して実行、と::
+
+    $ python manage.py syncdb
+    Creating tables ...
+    Creating table polls_poll
+    Creating table polls_choice
+    Installing custom SQL ...
+    Installing indexes ...
+    Installed 0 object(s) from 0 fixture(s)
+
+2-5. モデルで遊んでみる
+-----------------------
+
+んでもってインタラクティブシェルを Django の機構付きで動かしてモデルとかいじって遊ぼうということなので遊びます::
+
+    $ python manage.py shell
+
+クラスインスタンスをデバッグ目的とかで ``print`` したときに情報もっとほしいよねってことで ``__unicode__()`` メソッドを書くように提案されました。んーまああんまり気が進まないんですが、あとでこれを前提としたコードとか出されても困るので書きます。 Python 3 では ``__str__()`` だけでいいとか書いてありますね。というかこれ str 型とか unicode 型として扱ったときだけじゃなくて、他の型に変換する場合も同じ感じのメソッド書けばいけるんですかね？　あとで調べよう。
+
+これと同じようなノリで普通の Python のメソッドもちゃんと書けるよってことらしい。まあ、そりゃそうですよねー、ハイハイとか言いながら例に載っているメソッドをとりあえず追記します。
+
+ORM のメソッドの使い方とかもざっくり書いてありますが、まあこれは別にいまはちゃんと見なくていい、というか実際に使うぶんには気をつけなくちゃいけないことあるだろうから普通にリファレンスとか実装とか見ながら学んでいくことにします。「ほらこんなに簡単に DB の値参照できるでしょー」的なのはもういいや。
+
+2-6. モデルに対するテストを書く
+-------------------------------
+
+ん、いや、というか、ちょっと待って。追加したメソッドをちゃんとテストしたいんですけど。動作確認のためにいちいちインタラクティブシェルに入るのとか面倒ですし。
+
+ということで Django でのテストどうするのかなーってチュートリアルから離れて探してみようとしたら、チュートリアルの 5 章 ( https://docs.djangoproject.com/en/1.6/intro/tutorial05/ ) にテストについて書いてあるのを見つけました。
+
+ということでちょっと先取りです。テストの必要性を説いているところは「あーなんか文字が書いてあるなー」という感じで読み飛ばすとして、えーっとアプリケーション直下にある ``test.py`` っていうファイルを編集すればいいのか。で、 ``django.test.TestCase`` のサブクラスを書くという感じか。これも例をまんまなぞる::
+
+    import datetime
+
+    from django.utils import timezone
+    from django.test import TestCase
+
+    from polls.models import Poll
+
+    class PollMethodTests(TestCase):
+
+        def test_was_published_recently_with_future_poll(self):
+            """
+            was_published_recently() should return False for polls whose
+            pub_date is in the future
+            """
+            future_poll = Poll(pub_date=timezone.now() + datetime.timedelta(days=30))
+            self.assertEqual(future_poll.was_published_recently(), False)
+
+で、各テストメソッド内で ``self.assertEqual()`` とか呼ぶわけね。
+
+書き終わったらアプリケーションを指定してテストを実行するって感じかな::
+
+    $ python manage.py test polls
+    Creating test database for alias 'default'...
+    F
+    ======================================================================
+    FAIL: test_was_published_recently_with_future_poll (polls.tests.PollMethodTests)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+      File "/home/vagrant/work/co3k_site/polls/tests.py", line 16, in test_was_published_recently_with_future_poll
+        self.assertEqual(future_poll.was_published_recently(), False)
+    AssertionError: True != False
+
+    ----------------------------------------------------------------------
+    Ran 1 test in 0.004s
+
+    FAILED (failures=1)
+    Destroying test database for alias 'default'...
+
+よしよし。これで普通に TDD できる。でも DB の構築とか破棄とかどこでやってるんだろうこれ。 DB いらないテストとかでオーバーヘッドになったりしないのかな。
+
+あとモデルとかもそうなんだけど、これは一つのファイルに書かなきゃダメなんですかね。ファイルを分けたくなるくらいだったらアプリケーションを分けるべきとかそんな感じってわけじゃないですよね？　まあこれも応用編か。とりあえずはいいか。
+
+チュートリアルの 5 章にはビューに対するテストについての記述もありますが、まだビュー書いてないので後回し。ビュー書く段階になったら並行して読むことにします。
+
+2-7. コーディングスタイル
+-------------------------
+
+ということでどんどん次行きたいんですが、テストについて軽く触れたついでに推奨されるコーディングスタイルについても知りたいところです。 Django 界隈とか Python 界隈とかで (ああ、でも Python 界隈ってだけなら PEP 8 があるか)。フレームワークとしてのコード規約とかたぶんありますよね？　別にオレオレルールでもいいんでしょうけど、まあそういうのに従って書くのがお利口さんだよね。
+
+ということでさらに脱線して調べます。
+
+https://docs.djangoproject.com/en/1.6/internals/contributing/writing-code/coding-style/
+
+あったあった。
+
+> Unless otherwise specified, follow PEP 8.
+
+はいはい、ですよねー。
+
+PEP 8 は何度か読んではいるんだけれどもコードを書くときの参考資料ってよりはコーディング規約とかルールとかを書くときの参考資料って感じで読むことが多かったので、改めてちゃんと読むことにします。
+
+もちろん原文でそのまま読みたいんですが、 PEP 8 はさすがにちゃんと読まなきゃいけないところが多いのと、まだ Python に慣れ親しんでないので Python 的な用語が出てきたときに普通の英単語と区別できないんじゃないかとか心配なのでさすがに参考訳がほしい。
+
+ということで探してみたところ、 http://oldriver.org/python/pep-0008j.html が主にみなさんが参照していらっしゃる日本語訳っぽいのですが、初版がベースとなっていて 2013-08-01 と 2013-11-01 の変更が反映されていないっぽいです。うーん、あー、どうするかー、やっぱり日本語訳だけでは完結しないかー、原文読むかー。
+
+とりあえず今回はここまで。
+
+References
+==========
+
+.. [1] 認証機構に対するタイミング攻撃による有効なログインアカウント漏洩への対策
+       https://code.djangoproject.com/ticket/20760
+
+.. [2] パスワードハッシュメカニズムを悪用した長いパスワードによる DoS への対策リリース
+       https://www.djangoproject.com/weblog/2013/sep/15/security/

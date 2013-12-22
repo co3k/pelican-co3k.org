@@ -1,0 +1,126 @@
+===========================================================================================================
+【トリビア】iOS 搭載の Mobile Safari にはデフォルトの検索エンジンの設定を取得、変更する関数が実装されている
+===========================================================================================================
+
+:date: 2013-05-27 12:30:54
+:slug: blog-32
+
+iPhone で Yahoo! 知恵袋をブラウジングしていたところ、以下の画像に示したような表示要素が出てくることに気がつきました。
+
+.. image:: https://lh3.googleusercontent.com/-Y276_8WmHQQ/UaILiCCIUkI/AAAAAAAABPI/jQ4yhxOUEpw/s400/safari-search-engine-functions-03.jpg
+    :target: https://lh3.googleusercontent.com/-Y276_8WmHQQ/UaILiCCIUkI/AAAAAAAABPI/jQ4yhxOUEpw/s800/safari-search-engine-functions-03.jpg
+
+「んん？　もちろん Yahoo! JAPAN はデフォルトの検索エンジンにはしていないが、どうやってそのことを知ったのだ？」と思い、 iPhone を MacBook Pro に繋いで、 OSX 側の Safari からいろいろと確認してみたところ、 http://m.chiebukuro.yahoo.co.jp/common/ChieSpSearchEngine.js にて、謎の関数 ``canSetSearchEngine()`` 、 ``setSearchEngine()`` 、 ``getSearchEngine()`` を読んでいることに気がつきました。ファッ！？　なんだこの関数群は。
+
+ということでボタンを押下してみると……
+
+.. image:: https://lh3.googleusercontent.com/-GhXmTyOAm4o/UaIGF93tSQI/AAAAAAAABOc/oPWW3fPPYTE/s400/safari-search-engine-functions-09.jpg
+    :target: https://lh3.googleusercontent.com/-GhXmTyOAm4o/UaIGF93tSQI/AAAAAAAABOc/oPWW3fPPYTE/s800/safari-search-engine-functions-09.jpg
+
+このようなダイアログが出てきました。早速設定値を確認すると、以下のようにちゃんとデフォルトの検索エンジンが「Yahoo!」になっていることがわかります。
+
+.. image:: https://lh6.googleusercontent.com/-SQXVihk3aq8/UaIGGcgOPtI/AAAAAAAABOY/V2ZsNK40N7s/s400/safari-search-engine-functions-11.jpg
+    :target: https://lh6.googleusercontent.com/-SQXVihk3aq8/UaIGGcgOPtI/AAAAAAAABOY/V2ZsNK40N7s/s800/safari-search-engine-functions-11.jpg
+
+しかし、この関数群は一体何者なのでしょうか？
+
+ということでググってみたところ、 `mobile safari - Is it possible to programmatically change the default search engine for the Iphone? - Stack Overflow <http://stackoverflow.com/questions/2960788/is-it-possible-to-programmatically-change-the-default-search-engine-for-the-ipho>`_ という Stack Overflow の質問がヒットしました。この質問に対する回答によると、
+
+    The Window object in Mobile Safari on iOS has what appear to be three undocumented functions that make interaction with the default search engine possible:
+
+    -- `mobile safari - Is it possible to programmatically change the default search engine for the Iphone? - Stack Overflow <http://stackoverflow.com/questions/2960788/is-it-possible-to-programmatically-change-the-default-search-engine-for-the-ipho>`_
+
+ということで、ドキュメント化されていないけれども、 iOS に搭載された Mobile Safari ではデフォルトの検索エンジン周りの関数が使えるということらしいです。
+
+いつから実装されていたか
+========================
+
+`inspect window(and Safari3と4の判定) - os0x.blog <http://os0x.hatenablog.com/entry/20090226/1235616936>`_ (2009 年 2 月 26 日の記事) にて、 「Safari3からSafari4betaで新たに増えたグローバルプロパティ」が一覧されており、その中に ``getSearchEngine()`` と ``setSearchEngine()`` があることが確認できます。
+
+`Safari - Wikipedia <http://ja.wikipedia.org/wiki/Safari#iOS>`_ によれば、 Safari4 というのは iPhone OS 3.0 に対応したもの…… iPhone 3GS に搭載されていた OS ですね。 `iOS (アップル) - Wikipedia <http://ja.wikipedia.org/wiki/IOS_(%E3%82%A2%E3%83%83%E3%83%97%E3%83%AB)#3.x>`_ によるとこの OS が配布されたのは 2009 年 6 月 17 日 ということのようなので、一般ユーザの手元でも随分昔からこの関数は使えたことになりますね。
+
+一方で、 ``canSetSearchEngine()`` についてはこのなかに含まれていないようです。ということで、こちらについては実装時期がわかりませんでした。
+
+なにができるか
+==============
+
+各関数の挙動を http://jsbin.com/imitas/6/ にて確かめられるようにしておきました。
+
+canSetSearchEngine()
+--------------------
+
+デフォルトの検索エンジンの設定変更ができるかどうかを返す関数のようです。設定変更が可能な場合は ``true`` を返します。これが ``false`` を返す場合、後述する ``setSearchEngine()`` をコールしたとしても、設定値の変更はおこなわれません。
+
+……が、設定変更が可能になる／不可能になるタイミングがイマイチ掴めていません。あるとき突然設定できたりできなくなったりします。一定期間の間に設定変更が可能な回数が決まっていたりするのでしょうか？　よくわかりません。
+
+以下の画像はこの関数の返り値を ``alert()`` で表示してみただけの、何のおもしろみもない代物です。
+
+.. image:: https://lh5.googleusercontent.com/-gQTSW-FUs7A/UaIGFe9ZtvI/AAAAAAAABN0/GKgc6-ff0p0/s400/safari-search-engine-functions-04.jpg
+    :target: https://lh5.googleusercontent.com/-gQTSW-FUs7A/UaIGFe9ZtvI/AAAAAAAABN0/GKgc6-ff0p0/s800/safari-search-engine-functions-04.jpg
+
+setSearchEngine()
+-----------------
+
+デフォルトの検索エンジンの設定を、第一引数で指定したものに置き換えるようです。たとえば ``Bing`` を指定した場合、以下の確認ダイアログが出ます。
+
+.. image:: https://lh5.googleusercontent.com/-WRb-aC0gCeQ/UaIGF_SfONI/AAAAAAAABOE/mv1lgecuJGU/s400/safari-search-engine-functions-07.jpg
+    :target: https://lh5.googleusercontent.com/-WRb-aC0gCeQ/UaIGF_SfONI/AAAAAAAABOE/mv1lgecuJGU/s800/safari-search-engine-functions-07.jpg
+
+ここで「キャンセル」を押下すると、当然ながら設定変更はおこなわれません。
+
+ちなみに ``canSetSearchEngine()`` が ``false`` を返す場合においては、この確認ダイアログすらも表示されることはなく、設定の変更もおこなわれません。
+
+``setSearchEngine()`` にて設定変更可能なものは、設定画面にて選択肢として表示されている検索エンジンに限られます (基本的には ``Yahoo!`` , ``Google`` , ``Bing`` の三種類。後述) ので、たとえばここから任意の URL を設定するようなことはできません。
+
+getSearchEngine()
+-----------------
+
+現在のデフォルトの検索エンジンの設定を返します。たとえば、 ``"Your default search engine is: " + getSearchEngine()"`` を ``alert()`` で表示してみると以下の画像のようになります。
+
+.. image:: https://lh5.googleusercontent.com/-feIN1DCUQ0Y/UaIGFQ5VzTI/AAAAAAAABNo/vT-cfJdUQRI/s400/safari-search-engine-functions-05.jpg
+    :target: https://lh5.googleusercontent.com/-feIN1DCUQ0Y/UaIGFQ5VzTI/AAAAAAAABNo/vT-cfJdUQRI/s800/safari-search-engine-functions-05.jpg
+
+ちなみに、デフォルトの検索エンジンの設定値を取得する際には確認ダイアログは表示されず、また、 ``canSetSearchEngine()`` が ``false`` を返す状況においても ``getSearchEngine()`` は機能します。
+
+この関数群に問題はあるか
+========================
+
+``getSearchEngine()`` のコールの際にユーザの確認を伴わないことから、 Web サイトの運営者はユーザの同意を得ずにデフォルトの検索エンジンを取得することができます。
+
+この設定値を取得することによって、 Web サイトの運営者はユーザに知られることなく、ユーザを特定するための材料の一つを得ることができるようになります。
+
+……が、現状、これは杞憂であるように思います。この関数から得られる値は、ユーザが自由意思によって追加することは基本的には不可能で、 ``Yahoo!``, ``Google``, ``Bing`` のいずれかの値しか得られませんし、大半のユーザはデフォルト設定の ``Google`` のままでしょう。これらを ``Yahoo!`` や ``Bing`` に変更したうえで、そのことを世間に吹聴していれば、 Web サイトの運営者はあなたを特定することができるかもしれませんが、現実味のない話ではあります (ユーザーの性格の推定材料ぐらいにはなる？　うーん、いや、それもどうかなあ……)。
+
+さて。
+
+先ほどから「基本的には」を連発しているのは、基本的ではない状況があるからですね。みんな大好き JailBreak 済み環境です。
+
+僕はだらしがない人間なので JB 済みの iPhone を常用できるはずもなく、仕方がないので JB 専用の iPod touch を購入してもう少し追加検証してみました。安い買い物ではなかったので誰か褒めてほしいです。
+
+JB 済みの環境では、 ``iFile`` という、 iOS 内部のファイルの閲覧や編集がおこなえるアプリが利用できます。このアプリを利用して、デフォルトの検索エンジン設定を直接編集してみます。
+
+.. image:: https://lh6.googleusercontent.com/-oEYT6klSMec/UaIGGWga_3I/AAAAAAAABOQ/R03HIrvB98I/s400/safari-search-engine-functions-12.jpg
+    :target: https://lh6.googleusercontent.com/-oEYT6klSMec/UaIGGWga_3I/AAAAAAAABOQ/R03HIrvB98I/s800/safari-search-engine-functions-12.jpg
+
+ここから、「テキストビューアー」経由で、 ``Bing`` 用の設定値をコピー＆ペーストし、「プロパティビューア」経由で独自のものに変更をして……
+
+.. image:: https://lh4.googleusercontent.com/-Ho5rABOiY_w/UaIGHC7FlzI/AAAAAAAABOs/riWz4huTvRE/s400/safari-search-engine-functions-18.jpg
+    :target: https://lh4.googleusercontent.com/-Ho5rABOiY_w/UaIGHC7FlzI/AAAAAAAABOs/riWz4huTvRE/s800/safari-search-engine-functions-18.jpg
+
+このように検索エンジンとして設定可能なものを追加することができます。
+
+.. image:: https://lh6.googleusercontent.com/-u9faEmmvKwg/UaIGG-GkZzI/AAAAAAAABOk/4FovyL3s_QU/s400/safari-search-engine-functions-15.jpg
+    :target: https://lh6.googleusercontent.com/-u9faEmmvKwg/UaIGG-GkZzI/AAAAAAAABOk/4FovyL3s_QU/s800/safari-search-engine-functions-15.jpg
+
+ここでは、検索機能を持つ企業内ポータルサイトを追加してみたという感じのイメージです。
+
+この設定をおこなった場合に ``getSearchEngine()`` の値がどのようになるかを確認すると……
+
+.. image:: https://lh6.googleusercontent.com/-PZf7zGtQBKA/UaIGGxZo6yI/AAAAAAAABOo/D6R4O1I-_rQ/s400/safari-search-engine-functions-17.jpg
+    :target: https://lh6.googleusercontent.com/-PZf7zGtQBKA/UaIGGxZo6yI/AAAAAAAABOo/D6R4O1I-_rQ/s800/safari-search-engine-functions-17.jpg
+
+``ScriptingName`` で指定した値を得ることができるようにありました。ここで個人や企業を特定されかねない値を指定してしまうと、ウェブサイトの運営者にこの値をこっそり取得されてしまう危険が生じるので注意が必要です。
+
+まあ、といっても、デフォルトの検索エンジンを変更するなどというニーズ自体がほとんどなさそうですね……。
+
+ということでトリビアでした。

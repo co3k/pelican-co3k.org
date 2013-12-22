@@ -1,0 +1,259 @@
+==========================================================================
+OSS のモダンブラウザがサポートしているスクリプト言語の種類について調査した
+==========================================================================
+
+:date: 2013-05-21 12:28:44
+:slug: blog-31
+
+`機密情報を含むJSONには X-Content-Type-Options: nosniff をつけるべき - 葉っぱ日記 <http://d.hatena.ne.jp/hasegawayosuke/20130517/p1>`_ 、 VBScript を利用した攻撃ということで大変興味深く読ませていただきました。
+
+IE 9 とか IE 10 とかってまだ VBScript サポートしていたのかー、どっひゃーって感じでした。この辺は意外と他にも問題が潜んでいるかも？
+
+まあ普段 Windows 使っていないので IE について調べてみる気はまったく起きないのですが、他のブラウザでも実は JavaScript 以外のスクリプト言語をサポートしていたりしていないかどうか、気になりますよね。
+
+ということで以下のモダンブラウザの先端のソース (Subversion でいうところの trunk に類するもの) で ``script`` 要素の ``type`` または ``language`` 属性の検証部分のコードをチェックしてみました。
+
+* Mozilla Firefox
+* Webkit
+* Google Chrome
+
+結論としては「JavaScript 以外のスクリプトが実行できるブラウザはない」です。
+
+……。
+
+なんも面白くない結果になりましたがせっかく調べたので以下に調査結果を貼りますね。コードは気をつけて読んではいますが、怪しげなところを重点的に追っかけているだけなので、なんかうっかり外したことを言っていたりしたらすいません。
+
+その前に HTML5 の仕様ではどうなってる？
+=======================================
+
+``script`` 要素の ``type`` 属性値に指定可能な値として、以下が示されています。
+
+    The following lists some MIME type strings and the languages to which they refer:
+
+    "application/ecmascript": "application/javascript": "application/x-ecmascript": "application/x-javascript": "text/ecmascript": "text/javascript": "text/javascript1.0": "text/javascript1.1": "text/javascript1.2": "text/javascript1.3": "text/javascript1.4": "text/javascript1.5": "text/jscript": "text/livescript": "text/x-ecmascript": "text/x-javascript"
+        JavaScript. [ECMA262]
+
+    "text/javascript;e4x=1"
+        JavaScript with ECMAScript for XML. [ECMA357]
+
+    User agents may support other MIME types and other languages.
+
+    The following MIME types must not be interpreted as scripting languages:
+
+    * "text/plain"
+    * "text/xml"
+    * "application/octet-stream"
+    * "application/xml"
+
+    -- `4.3 Scripting — HTML5 (W3C Candidate Recommendation 17 December 2012) <http://www.w3.org/TR/2012/CR-html5-20121217/scripting-1.html#scriptingLanguages>`_
+
+ということで JavaScript として認識される MIME タイプが例として挙げられていますが、 "User agents may support other MIME types and other languages." とあるとおり、他の言語や他の MIME タイプをサポートしてもいい、ということで、仕様としては JavaScript に限らずどのような言語でもサポートできるということになりますね。
+
+ただし、 ``text/plain`` などの MIME タイプはスクリプト言語として解釈しないように明確に禁止されています。
+
+Mozilla Firefox
+===============
+
+Mercurial の一番最新っぽいブランチ (Git でいうところの master) ってどこを見ればいいんだろう？　よくわからなかったので tip ってブランチ (?) のアーカイブを落としてきて調査しました。間違ってたらゴメン。
+
+以下、すべて 26cb30a532a1 時点の調査結果。
+
+``script`` 要素の属性値諸々をパースし終えたあと、スクリプトの読み込みが `nsScriptLoader <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsScriptLoader.cpp>`_ によっておこなわれるようです。
+
+属性値にて指定された言語やバージョンのチェックは、 `nsScriptLoader::ProcessScriptElement <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsScriptLoader.cpp#l405>`_ 内、 `445 行目 <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsScriptLoader.cpp#l445>`_ 以降にありました。
+
+まず ``type`` 属性値のチェック ( `450 行目 <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsScriptLoader.cpp#l450>`_ 付近)::
+
+       450   aElement->GetScriptType(type);
+       451   if (!type.IsEmpty()) {
+       452     NS_ENSURE_TRUE(ParseTypeAttribute(type, &version), false);
+
+``NS_ENSURE_TRUE`` は第一引数に指定された値が ``true`` として評価できる場合に第二引数を返すもののようです。ここでは ``false`` を返すわけですね。
+
+さて、この `ParseTypeAttribute(type, &version) <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsScriptLoader.cpp#l374>`_ のコールによって ``version`` に各バージョンに応じた ``JSVersion`` 型の値が入ります。
+
+どのバージョンを返すかは `nsContentUtils::ParseJavascriptVersion(const nsAString& aVersionStr) <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsContentUtils.cpp#l823>`_ によって以下のように判断されるようです。
+
+* バージョンが未指定、 1.0、 1.1、 1.2、 1.3、 1.4、 1.5 の場合は ``JSVERSION_DEFAULT``
+* 1.6 の場合は ``JSVERSION_1_6``
+* 1.7 の場合は ``JSVERSION_1_7``
+* 1.8 の場合は ``JSVERSION_1_8``
+* それ以外の場合は ``JSVERSION_UNKNOWN``
+
+そして、 ``type`` 属性値が存在しない場合は ``language`` 属性値のチェックがおこなわれます ( `453 行目 <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsScriptLoader.cpp#l453>`_ 付近)::
+
+   453   } else {
+   /******* SNIP *******/
+   458       nsAutoString language;
+   459       scriptContent->GetAttr(kNameSpaceID_None, nsGkAtoms::language, language);
+   460       if (!language.IsEmpty()) {
+   461         if (!nsContentUtils::IsJavaScriptLanguage(language)) {
+   462           return false;
+   463         }
+   464       }
+   465     }
+   466   }
+
+`nsContentUtils::IsJavaScriptLanguage(language) <http://hg.mozilla.org/mozilla-central/file/26cb30a532a1/content/base/src/nsContentUtils.cpp#l809>`_ の返り値が ``false`` の場合はスクリプトは実行せず、 ``true`` の場合は ``version`` には初期化時の ``JSVERSION_DEFAULT`` がセットされたまま、もろもろの処理が実行されます。
+
+そういったわけで、 JavaScript 以外のスクリプト言語を許容し、実行する箇所は確認できませんでした。
+
+ちなみに ``nsContentUtils::IsJavaScriptLanguage(language)`` は以下の値のみを許容します (case-insensitive)。
+
+* javascript
+* livescript
+* mocha
+* javascript1.0
+* javascript1.1
+* javascript1.2
+* javascript1.3
+* javascript1.4
+* javascript1.5
+
+Webkit
+======
+
+r150349 時点の trunk にて調査をしました。
+
+`bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, LegacyTypeSupport supportLegacyTypes) <http://trac.webkit.org/browser/trunk/Source/WebCore/dom/ScriptElement.cpp?rev=150349#L170>`_ にて属性値のチェックがおこなわれています。
+
+サポートするスクリプト言語であるかどうかのチェックは `192 行目 <http://trac.webkit.org/browser/trunk/Source/WebCore/dom/ScriptElement.cpp?rev=150349#L192>`_ にておこなわれているようです::
+
+    192     if (!isScriptTypeSupported(supportLegacyTypes))
+    193         return false;
+
+ここでコールされる `bool ScriptElement::isScriptTypeSupported(LegacyTypeSupport supportLegacyTypes) <http://trac.webkit.org/browser/trunk/Source/WebCore/dom/ScriptElement.cpp?rev=150349#L150>`_ が ``false`` であれば、スクリプトの実行をおこなわないということですね。
+
+``type`` 属性値に指定された MIME タイプのチェックは `bool MIMETypeRegistry::isSupportedJavaScriptMIMEType(const String& mimeType) <http://trac.webkit.org/browser/trunk/Source/WebCore/platform/MIMETypeRegistry.cpp?rev=150349#L573>`_ でおこなわれます。これは指定された MIME タイプが `static void initializeSupportedJavaScriptMIMETypes() <http://trac.webkit.org/browser/trunk/Source/WebCore/platform/MIMETypeRegistry.cpp?rev=150349#L329>`_ によって構築された配列に含まれるかどうかのチェックとなっています。
+
+`static void initializeSupportedJavaScriptMIMETypes() <http://trac.webkit.org/browser/trunk/Source/WebCore/platform/MIMETypeRegistry.cpp?rev=150349#L329>`_ のコードをすべて引きます (コメントは読みづらくなりそうなのでオミットしますね)::
+
+    329 static void initializeSupportedJavaScriptMIMETypes()
+    330 {
+    /******* SNIP *******/
+    339     static const char* types[] = {
+    340         "text/javascript",
+    341         "text/ecmascript",
+    342         "application/javascript",
+    343         "application/ecmascript",
+    344         "application/x-javascript",
+    345         "text/javascript1.1",
+    346         "text/javascript1.2",
+    347         "text/javascript1.3",
+    348         "text/jscript",
+    349         "text/livescript",
+    350     };
+    351     for (size_t i = 0; i < WTF_ARRAY_LENGTH(types); ++i)
+    352       supportedJavaScriptMIMETypes->add(types[i]);
+    353 }
+
+ということで ``type`` 属性値の値としては上述の引用部分にて列挙されている MIME タイプのみが許容されるようです。
+
+一方、 ``language`` 属性の場合はどうかというと……こちらは `static bool isLegacySupportedJavaScriptLanguage(const String& language) <http://trac.webkit.org/browser/trunk/Source/WebCore/dom/ScriptElement.cpp?r=150349#L115>`_ ですね。
+
+短いものなのでこちらも全部引いちゃいます (同じくコメント略)::
+
+    115 static bool isLegacySupportedJavaScriptLanguage(const String& language)
+    116 {
+    /******* SNIP *******/
+    124     typedef HashSet<String, CaseFoldingHash> LanguageSet;
+    125     DEFINE_STATIC_LOCAL(LanguageSet, languages, ());
+    126     if (languages.isEmpty()) {
+    127         languages.add("javascript");
+    128         languages.add("javascript");
+    129         languages.add("javascript1.0");
+    130         languages.add("javascript1.1");
+    131         languages.add("javascript1.2");
+    132         languages.add("javascript1.3");
+    133         languages.add("javascript1.4");
+    134         languages.add("javascript1.5");
+    135         languages.add("javascript1.6");
+    136         languages.add("javascript1.7");
+    137         languages.add("livescript");
+    138         languages.add("ecmascript");
+    139         languages.add("jscript");
+    140     }
+    141 
+    142     return languages.contains(language);
+    143 }
+
+Google Chrome
+=============
+
+Google Chrome もベースとしては WebKit を使っていますが、手を加えている場所もあるようなので念のためチェックしてみました。
+
+``MIMETypeRegistry`` 周りの実装が独自っぽいので若干わくわくしますが、サポート対象となる言語のリストは一緒なようですね ( `src/net/base/mime_util.cc の 398 行目 <http://src.chromium.org/viewvc/chrome/trunk/src/net/base/mime_util.cc#l398>`_ )::
+
+    398     static const char* const supported_javascript_types[] = {
+    399     "text/javascript",
+    400     "text/ecmascript",
+    401     "application/javascript",
+    402     "application/ecmascript",
+    403     "application/x-javascript",
+    404     "text/javascript1.1",
+    405     "text/javascript1.2",
+    406     "text/javascript1.3",
+    407     "text/jscript",
+    408     "text/livescript"
+    409     };
+
+なんだよ！　期待させやがって！
+
+つーか実際の挙動はどうなのよ？
+==============================
+
+このエントリの公開ボタンを押そうとする直前に、ブラウザ上の挙動をまったく確認してないことに気がつきました。
+
+つーことで上述の調査結果に基づいた ``type`` 属性値と ``language`` 属性値をひたすら試して有効な属性値を列挙するスクリプトを http://jsbin.com/iyevut/1 に慌てて作ったので勘弁してください。
+
+手元の OSX 上の Mozilla Firefox 23.0a2 (2013-05-20) では以下の属性値が有効なようです。
+
+* type="text/javascript"
+* type="text/javascript1.0"
+* type="text/javascript1.1"
+* type="text/javascript1.2"
+* type="text/javascript1.3"
+* type="text/javascript1.4"
+* type="text/javascript1.5"
+* type="text/ecmascript"
+* type="application/javascript"
+* type="application/ecmascript"
+* type="application/x-javascript"
+* type="text/jscript"
+* type="text/livescript"
+* language="javascript"
+* language="javascript1.0"
+* language="javascript1.1"
+* language="javascript1.2"
+* language="javascript1.3"
+* language="javascript1.4"
+* language="javascript1.5"
+* language="livescript"
+* language="mocha"
+
+同じく OSX 上の Google Chrome 29.0.1512.0 canary では以下が有効でした。
+
+* type="text/javascript"
+* type="text/javascript1.1"
+* type="text/javascript1.2"
+* type="text/javascript1.3"
+* type="text/ecmascript"
+* type="application/javascript"
+* type="application/ecmascript"
+* type="application/x-javascript"
+* type="text/jscript"
+* type="text/livescript"
+* language="javascript"
+* language="javascript1.0"
+* language="javascript1.1"
+* language="javascript1.2"
+* language="javascript1.3"
+* language="javascript1.4"
+* language="javascript1.5"
+* language="javascript1.6"
+* language="javascript1.7"
+* language="livescript"
+* language="ecmascript"
+* language="jscript"
+
+それぞれの表記でスクリプトを実行する JavaScript エンジンとか準拠する規格とかの挙動に差が出るかどうかまでは調べきれんかった！　というか Firefox では ``text/javascript1.6`` とか ``text/javascript1.7`` とか ``text/javascript1.8`` とか有効だと踏んでたんだけどなんでだ。バージョンが違うから？（あとで調べてみて追記するかも）

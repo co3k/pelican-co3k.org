@@ -1,0 +1,128 @@
+=========================================
+Django のチュートリアルをやってみるよ (3)
+=========================================
+
+:date: 2013-12-21 23:18:58
+:slug: blog-38
+
+https://docs.djangoproject.com/en/1.6/intro/tutorial03/ をやります。お、 view だ。
+
+1. チュートリアル 3 章
+======================
+
+まあ view とはどんなものなのよみたいなのは別にいいや。ざっと斜め読みしたところ、 URL ルーティングの話が出てきているっぽいのは気になる。 URL ルーティングとビューが密接に関連付いている？
+
+1-1. とりあえずビュー書いてみる
+-------------------------------
+
+``polls/views.py`` に以下のコードを貼り付けて、::
+
+    from django.http import HttpResponse
+
+    def index(request):
+        return HttpResponse("Hello, world. You're at the poll index.")
+
+その上で "To call the view, we need to map it to a URL" ということで ``urls.py`` を作れって言われた。ビューは ``django.http.HttpResponse`` を返すのね。普通にシンプルだ。普通なのはいいことだ。
+
+ん、てことはえーっと……つまり `P of EAA <http://www.amazon.co.jp/dp/4798105538>`_ で言うところの `Page Controller <http://www.martinfowler.com/eaaCatalog/pageController.html>`_ ってことかな？
+
+とりあえずアプリケーション単位の ``urls.py`` を言われるがままに作る::
+
+    from django.conf.urls import patterns, url
+
+    from polls import views
+
+    urlpatterns = patterns('',
+        url(r'^$', views.index, name='index')
+    )
+    
+で、サイト全体の ``urls.py`` に以下を追加してアプリケーションの ``urls.py`` を読み込む::
+
+    url(r'^polls/', include('polls.urls')),
+
+これによって ``/polls/`` な URL でアプリケーションの ``urls.py`` の URL 定義を見にいくようになって、さらにアプリケーションの ``urls.py`` で定義された定義に基づいて ``views.py`` の ``index()`` が呼ばれるようになるということですね。
+
+あとはビューを追加したりとかそれにあわせて URL マッチングルール追加したりとか、マッチング用の正規表現のいじり方とかなのでその辺は適当にスキップ。
+
+1-2. Template View を使ってみる
+-------------------------------
+
+`P of EAA <http://www.amazon.co.jp/dp/4798105538>`_ の `Template View <http://www.martinfowler.com/eaaCatalog/templateView.html>`_ ですね。
+
+テンプレートはプロジェクトのルートディレクトリ直下の ``templates`` ディレクトリに置いてもいいけど、再利用のためにはアプリケーション単位のディレクトリに置いた方がいいよ！　って書いてあった。んで再利用可能なアプリケーションを作成するためのガイドとして https://docs.djangoproject.com/en/1.6/intro/reusable-apps/ が紹介されていた。あとで読もう。
+
+で、アプリケーション単位のテンプレートを作るにあたっては、 ``templates`` ディレクトリ直下に置くこともできるし ``templates/polls`` 以下に置くこともできるんだけれども、アプリケーション以下の ``templates`` は他のアプリケーションの別のテンプレートと衝突したときにどちらを読み込むか曖昧になるからやめた方がいいよ！　って書いてあった。なるほど。
+
+で、べべべーとチュートリアル通りに書く。まあ Twig の使用経験もあるしこの辺は難しくない。テンプレートの render を自分で読んで ``HttpResponse`` を返すこともできるけれど、そういうことをするためのショートカットもあるよ！　って感じ。 Symfony2 もそんな感じやったね。
+
+例の中で、::
+
+    latest_poll_list = Poll.objects.order_by('-pub_date')[:5]
+
+とかやっているのがパフォーマンス的にどうなのか気になったので MySQL のクエリログ吐くようにしたうえで見てみたら、::
+
+    SELECT `polls_poll`.`id`, `polls_poll`.`question`, `polls_poll`.`pub_date` FROM `polls_poll` ORDER BY `polls_poll`.`pub_date` DESC LIMIT 5
+
+とかちゃんと LIMIT 句つけててまあ健全だった。メソッド呼び出しをした上でその返り値の 5 件目までを突っ込むようなコードに見えるんだけれど、にも関わらず実行されるクエリは LIMIT 付いてるってことは、うーん？
+
+ということで ``Poll.objects.order_by('-pub_date')[:5]`` の結果をどういう風に扱うかで実行される SQL がどう変化するのかをいくつか試してみた。
+
+1. 呼ぶだけ呼んで特にどこにも格納しない場合
+    SQL 実行せず
+2. 結果を変数に格納するだけして特に参照しない場合
+    SQL 実行せず
+3. 結果を変数に格納するだけして ``[0]`` を参照した場合
+    ``SELECT `polls_poll`.`id`, `polls_poll`.`question`, `polls_poll`.`pub_date` FROM `polls_poll` ORDER BY `polls_poll`.`pub_date` DESC LIMIT 1`` を実行する
+4. 結果を変数に格納して for でイテレーションした場合
+    ``SELECT `polls_poll`.`id`, `polls_poll`.`question`, `polls_poll`.`pub_date` FROM `polls_poll` ORDER BY `polls_poll`.`pub_date` DESC LIMIT 5`` を実行する
+5. 結果を変数に格納するだけして ``[0]`` から ``[5]`` を参照した場合
+    ``SELECT `polls_poll`.`id`, `polls_poll`.`question`, `polls_poll`.`pub_date` FROM `polls_poll` ORDER BY `polls_poll`.`pub_date` DESC LIMIT 1`` や ``SELECT `polls_poll`.`id`, `polls_poll`.`question`, `polls_poll`.`pub_date` FROM `polls_poll` ORDER BY `polls_poll`.`pub_date` DESC LIMIT 1 OFFSET 1`` といった SQL を計 5 個実行する
+
+4 あたりまでは「おおっ」って思ったんだけど、 5 はちょっとお馬鹿な感じですね……とりあえず参照のタイミングで SQL を実行していることはわかりましたが、ちょっと気をつけないとな。
+
+ということで先に進んで 404 の出し方なんかもやってみた。あとは URL のヘルパーの使い方とか、 URL 定義名にネームスペースを与えるとか。ということで 3 章終わり。
+
+……テストは！？　ねえビューのテストは！？
+
+1-3. ビューのテスト
+-------------------
+
+ということで勝手に 5 章に進んでビューをテストしてみる。
+
+https://docs.djangoproject.com/en/1.6/intro/tutorial05/#test-a-view をふむふむと呼んでいると、
+
+> We will start again with the shell, where we need to do a couple of things that won’t be necessary in tests.py. The first is to set up the test environment in the shell:
+
+あ、そうなのね。ということで指示されたコードをインタラクティブシェルで実行してついでにいくつか触ってみた。なるほど。テスト用の HTTP クライアントもどきがやっぱりいるのね。
+
+そういやいままで使っていたデータとかが普通に出てきたけれど、テスト用の DB とかはどこで設定するんだろう。というか DB とか使うんですか。
+
+んでもってテストの書き方もざっくり見る。テストオブジェクトにクライアントとレスポンスオブジェクトが普通に紐付いていて、レスポンスの内容を見て出力をテストすればいいし、レスポンスの中にはコンテキストも入っているからその中身もテストすることができると。
+
+あとはまあこんなものかな。それより既存の DB を壊さない方法をはよ。
+
+……あれー、 5 章のチュートリアル終わっちゃった。 https://docs.djangoproject.com/en/1.6/topics/testing/ というのがあるらしいのでそれを読んでみようかな。
+
+https://docs.djangoproject.com/en/1.6/topics/testing/overview/#the-test-database なるものがあった。こうすればテスト用に DB 作れまっせー、みたいのは書いてあった。
+
+fixture については https://docs.djangoproject.com/en/1.6/topics/testing/overview/#fixture-loading にあった。テストクラスのプロパティに書けばいいらしい。んでもって、
+
+> This flush/load procedure is repeated for each test in the test case, so you can be certain that the outcome of a test will not be affected by another test, or by the order of test execution.
+
+とか書いてあるんだけど、いやそれはありがたいんだけれども flush とか load とかってどういう感じでやるんだろう。 flush ってまさか DB 丸ごと作り直すとかそういうことしないよね？
+
+しょうがないのでいろいろググりまくって調べたら `Testing and Django <http://carljm.github.io/django-testing-slides/>`_ とかいうスライドが目に付いたので読もう。
+
+……で、 http://carljm.github.io/django-testing-slides/#7 あたりで Django の標準のテスト機構が dis られてた！　えーｗ unittest2 使えってさ。
+
+うわ、 http://carljm.github.io/django-testing-slides/#40 で "WebTest > django.test.Client" とか言われてる！！
+
+http://www.celerity.com/blog/2013/04/29/how-write-speedy-unit-tests-django-part-1-basics/ でも "Avoid database transactions as much as you can. You'll notice a bias going forward of relying on unittest.TestCase instead of django.test.TestCase." とか言われてる。
+
+更にいろいろ見ていたら `Boost Django running unit testing faster with mysql database loaded into Ramdisk / Memory by I'm a Software Engineer <http://www.yodi.sg/boost-django-running-unit-testing-faster-with-mysql-database-loaded-into-ramdisk-memory/>`_ があった。これは MySQL の DB を ramdisk 置こうという話。
+
+いや、そういうことじゃなくて……と思ったけど MySQL 依存の何かとかちゃんとテストするにはむしろこういうアプローチじゃなきゃだめな気がしてきた。もちろん DB に依存しないテストを書くことも大事だけれども。
+
+しかし ramdisk なデータディレクトリとディスクなデータディレクトリを両方使いたいですね。なんとかできないかな。特定の DB だけ ramdisk を使うとかしたい。ちょっと考えてみるか。
+
+めっちゃ脱線しまくってるので Django のチュートリアルとしてはここまで。ちょっと「DB に依存したコードを速くする」というアプローチを検討してみますことよ。

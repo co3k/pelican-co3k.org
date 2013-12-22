@@ -1,0 +1,21 @@
+=================================================================================================
+Phing 2.4.3 では PEAR::VersionControl_Git を使った新しい Git 関連タスクが使えるようになっています
+=================================================================================================
+
+:date: 2010-11-15 20:58:14
+:slug: blog-11
+
+※この記事は、気まぐれではじめた PEAR::VersionControl_Git blog (http://pear-version-control-git.tumblr.com/) の Phing 2.4.3 now support git tasks by using PEAR::VersionControl_Git の翻訳です（原文自分で書いてるくせに誤訳とかあるかもしれないけどそこんとこよろしくお願いします）。
+
+Phing Project から、 Git タスクを備えた Phing 2.4.3 がついにリリースされました。
+    http://phing.info/trac/wiki/Users/News/Phing%202.4.3%20released
+
+実はこの Git タスクは、僕の PEAR::VersionControl_Git (http://ebihara.github.com/VersionControl_Git/) ライブラリを使っているのです！　これは Phing エクステンション開発者の Victor  Franzdagi (http://www.phpmag.ru/) の素晴らしい仕事のおかげです。(彼は Phing の Git タスクに関する素晴らしい記事も書いています : http://www.phpmag.ru/2010/10/21/phing-tasks-for-git-added/)
+
+このことは、僕のライブラリのユーザを増やすことに繋がるわけですから、とても嬉しく思っています。ソフトウェアの価値とはユーザで決まると僕は考えています。ソフトウェアにユーザが存在しなければ、そのソフトウェアは無価値であるということです。
+
+そういうわけでこれはすごくいい状況です。僕はたくさんのバグレポートと機能リクエスト (http://pear.php.net/bugs/search.php?cmd=display&package_name%5B%5D=VersionControl_Git)を僕のユーザ (そして Phing の Git タスクのユーザから) 貰える日を夢見ています。
+
+最後に、 Victor Frazdagi と Phing Project の開発者に感謝します。
+
+新しい Phing のリリースおめでとうございます！
