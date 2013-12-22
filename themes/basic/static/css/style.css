@@ -3,6 +3,7 @@
 body {
   background-color: #fff;
   color: #333;
+  word-break: break-all;
 }
 
 body a {
