@@ -1,39 +1,162 @@
-body {
-  font-family: monospace;
-  font-size: 100%;
-  background-color: white;
-  color: #111;
-  width: 80%;
-  min-width: 400px;
-  min-height: 200px;
-  padding: 1em;
-  margin: 5% 10%;
-  border: thin solid gray;
-  border-radius: 5px;
-  display: block;
+@charset "UTF-8";
+
+body a {
+  text-decoration: none;
 }
 
-a:link    { color: blue; text-decoration: none;      }
-a:hover   { color: blue; text-decoration: underline; }
-a:visited { color: blue;                             }
+header#banner {
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+}
 
-h1 a { color: inherit !important }
-h2 a { color: inherit !important }
-h3 a { color: inherit !important }
-h4 a { color: inherit !important }
-h5 a { color: inherit !important }
-h6 a { color: inherit !important }
+header#banner h1 {
+    margin: 0;
+    padding: 0;
+}
+
+header#banner h1 a {
+  color: #000000;
+  padding: 10px;
+  text-decoration: none;
+}
 
 #menu li {
-    display: inline;
+  display: inline;
 }
 
-#post-list {
-    margin-bottom: 1em;
-    margin-top: 1em;
+#menu li a {
+  padding: 0 10px;
+  color: #777;
+  text-decoration: none;
+}
+
+#menu li a:hover {
+    text-decoration: underline;
+}
+
+#content {
+  padding: 10px;
+  margin: auto;
+  max-width: 930px;
+}
+
+span.correct:after {
+  content: "["attr(data-datetime) " (JST) 訂正]";
+  font-size: 12px;
+  color: #999;
+}
+
+section#extra {
+  background-color: #eee;
+  border-top: 1px solid #ccc;
+}
+
+section#extra li {
+    list-style: none;
+}
+
+section#extra section {
+  padding: 10px;
+  margin: auto;
+  max-width: 930px;
+}
+
+footer#contentinfo {
+  font-size: 10px;
+  padding: 10px;
+  border-top: 1px solid #000000;
+  background-color: #ddd;
+}
+
+del {
+  color: #999;
+}
+
+#post-list li,
+.post-info li {
+    list-style: none;
+}
+
+footer.post-info {
+    text-align: right;
+    margin-bottom: 10px;
+}
+
+h2.entry-title {
+    margin-bottom: 0;
+    font-size: 100%;
+}
+
+.entry-content {
+    margin: 0 2em;
+}
+
+div.note {
+    padding: 10px;
+    margin: 10px 0;
+    border-style: solid;
+    border-width: 2px;
+
+    border-color: #ff3300;
+    background-color: #ffeecc;
+}
+
+div.note p.admonition-title {
+    display: none;
+}
+
+tt.literal {
+  border: 1px solid #ccc;
+
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+
+  background-color: #EDEDEF;
+  padding: 0 5px;
+}
+
+.footnote-reference {
+  font-size: 9px;
+}
+
+.footnote-reference:target, table.footnote:target {
+  background-color: #ff9;
+}
+
+.footnote-reference:target {
+  font-weight: bold;
+}
+
+table.footnote {
+  table-layout: auto;
+  border-style: dashed;
+  border-color: black;
+  border-width: 1px 0 0 0;
+  font-size: 12px;
+  width: 100%;
+}
+
+table.footnote td.label {
+  width: 30px;
+}
+
+table.footnote th, table.footnote tr, table.footnote td {
+  border: none;
 }
 
 pre {
-    margin: 2em 1em 2em 4em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: auto;
 }
 
+blockquote, pre {
+  border: 1px solid #ccc;
+  background-color: #EDEDEF;
+  padding: 0.5em;
+}
+
+th, td {
+  vertical-align: middle;
+}

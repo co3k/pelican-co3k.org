@@ -16,7 +16,8 @@ FEED_ALL_ATOM = None
 CATEGORY_FEED_ATOM = None
 TRANSLATION_FEED_ATOM = None
 
-DEFAULT_PAGINATION = 10
+DEFAULT_PAGINATION = 20
+SUMMARY_MAX_LENGTH = 25
 
 THEME = "themes/basic"
 MENUITEMS = [("About", "/"), ("Blog", "/category/blog.html")]
@@ -26,6 +27,9 @@ ARTICLE_LANG_URL = "blog/{slug}-{lang}.html"
 ARTICLE_LANG_SAVE_AS = "blog/{slug}-{lang}.html"
 AUTHOR_SAVE_AS = ""
 AUTHOR_URL = ""
+MONTH_ARCHIVE_SAVE_AS = "posts/{date:%Y}/{date:%m}/index.html"
+
+GITHUB_REPOSITORY = "http://github.com/ebihara/pelican-co3k.org/"
 
 # Uncomment following line if you want document-relative URLs when developing
 #RELATIVE_URLS = True
