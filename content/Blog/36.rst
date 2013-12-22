@@ -3,7 +3,7 @@ Django のチュートリアルをやってみるよ (2)
 =========================================
 
 :date: 2013-12-15 23:51:58
-:slug: blog-36
+:slug: 36
 
 https://docs.djangoproject.com/en/1.6/intro/tutorial02/ からやっていきますよ。
 

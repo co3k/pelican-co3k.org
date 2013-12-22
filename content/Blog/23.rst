@@ -3,7 +3,7 @@
 =======================================================================================================
 
 :date: 2011-12-19 00:49:20
-:slug: blog-23
+:slug: 23
 
 PHP 5.4 Advent Calendar 2011 19 日目です。 前回は `@cocoitiban さん <https://twitter.com/#!/cocoitiban/>`_ でした。 `htmlspecialchars()` のオプション追加については個人的にも気になっていたところ（Symfony2 の https://github.com/symfony/symfony/commit/053b42158e2f887b54a3e87977303d219530082f というコミットで気づいた）で、ふむふむと読ませていただきました。たとえば、文書型を考慮するようになると SGML 的に (あれ、 HTML 的にだっけ？) 違法である NULL 文字とかがさっくり消えて、 `IE が NULL 文字を無視したりして XSS に繋がりうる問題 <http://gihyo.jp/admin/serial/01/charcode/0005>`_ が回避できるようになったりするんですかねえ。
 

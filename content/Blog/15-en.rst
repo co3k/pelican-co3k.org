@@ -3,7 +3,7 @@ Try to use Essence Pattern in Doctrine 2 Entity
 ================================================
 
 :date: 2011-09-04 20:03:33
-:slug: blog-15
+:slug: 15
 :lang: en
 
 What's Essence Pattern?

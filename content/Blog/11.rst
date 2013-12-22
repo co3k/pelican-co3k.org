@@ -3,7 +3,7 @@ Phing 2.4.3 では PEAR::VersionControl_Git を使った新しい Git 関連タ�
 =================================================================================================
 
 :date: 2010-11-15 20:58:14
-:slug: blog-11
+:slug: 11
 
 ※この記事は、気まぐれではじめた PEAR::VersionControl_Git blog (http://pear-version-control-git.tumblr.com/) の Phing 2.4.3 now support git tasks by using PEAR::VersionControl_Git の翻訳です（原文自分で書いてるくせに誤訳とかあるかもしれないけどそこんとこよろしくお願いします）。
 

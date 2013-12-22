@@ -3,7 +3,7 @@ VersionControl_Git を PEAR に公開しました
 =========================================
 
 :date: 2010-02-06 07:15:29
-:slug: blog-3
+:slug: 3
 
 OpenPNE 3 でゴニョゴニョやっていたなかで、副産物としていつの間にか出来上がっていた VersionControl_Git が PEAR の採択プロセスを無事通過し(http://pear.php.net/pepr/pepr-proposal-show.php?id=625) 、晴れて PEAR パッケージとしてリリースできるようになりました。応援していただいた方々、ありがとうございます。
 

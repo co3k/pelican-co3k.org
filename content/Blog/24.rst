@@ -3,7 +3,7 @@ Mozilla CTF 2012 に参戦しました
 ===============================
 
 :date: 2012-02-13 12:00:31
-:slug: blog-24
+:slug: 24
 
 2012/01/25 (日本時間では 17 時からの 24 時間) に開催された `Mozilla CTF <https://wiki.mozilla.org/Security/Events/CTF>`_ に参加してきました。
 

@@ -3,7 +3,7 @@ DTrace で PHP スクリプトの動作を追跡する (PHP 5.4 Advent Calendar 
 ===============================================================================
 
 :date: 2011-12-12 00:03:54
-:slug: blog-21
+:slug: 21
 
 PHP 5.4 Advent Calendar 2011 12 日目です。 `前回は Paul さん <http://paul-yamamoto.tumblr.com/post/14059100842/trait>`_ でした。 Trait は今すぐにでも使いたい機能のうちのひとつですよね！
 
