@@ -149,6 +149,71 @@ Advantage of this approach is:
 * An instance of document has only validated values
 * Changing argument list of Document isn't big impact. You only need to rewrite creation Document in the DocumentEssence and to add method calls every DocumentEssence::createInstance() method chaining
 
+Get Doctrine Power: Dynamic Essence
+===================================
+
+Essence looks like a good, but it is a bother to create an Essence per an Entity.
+
+In this article, I talk as premises for using with Doctrine. Are there any way of getting help with from Doctrine? Let's try it.
+
+Think of general essence class. This class, gets metadata of class and understand about how to validate propety::
+
+    class EntityEssence
+    {
+        protected $class;
+
+        protected $data = array();
+
+        protected function __construct(ClassMetadata $class)
+        {
+            $this->class = $class;
+        }
+
+        public static function createInstance(ClassMetadata $class)
+        {
+            return new static($class);
+        }
+
+        public function set($name, $value)
+        {
+            $this->data[$name] = $value;
+
+            return $this;
+        }
+
+        protected function validate()
+        {
+            foreach ($this->class->getFieldNames() as $field) {
+                if (!$this->class->isNullable($field) && !isset($this->data[$field])) {
+                    if (!$this->class->isIdentifier($field)) {
+                        throw new \LogicException('You must specify a value of the "'.$field.'" field.');
+                    }
+                }
+            }
+        }
+
+        public function createEntity()
+        {
+            $this->validate();
+
+            $entity = $this->class->newInstance();
+            foreach ($this->data as $k => $v) {
+                $property = $this->class->getReflectionProperty($k);
+                $property->setAccessible(true);
+                $property->setValue($entity, $v);
+            }
+
+            return $entity;
+        }
+    }
+
+And use this like the following::
+
+    $document = EntityEssence::createInstance($em->getClassMetadata('Entities\Document'))
+        ->set('title', $title)
+        ->set('body', $body)
+        ->createEntity();
+
 Consideration of validation
 ===========================
 
