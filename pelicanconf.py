@@ -21,10 +21,10 @@ SUMMARY_MAX_LENGTH = 25
 
 THEME = "themes/basic"
 MENUITEMS = [("About", "/"), ("Blog", "/category/blog.html")]
-ARTICLE_SAVE_AS = "blog/{slug}.html"
-ARTICLE_URL = "blog/{slug}.html"
-ARTICLE_LANG_URL = "blog/{slug}-{lang}.html"
-ARTICLE_LANG_SAVE_AS = "blog/{slug}-{lang}.html"
+ARTICLE_SAVE_AS = "blog/{slug}"
+ARTICLE_URL = "blog/{slug}"
+ARTICLE_LANG_URL = "blog/{slug}-{lang}"
+ARTICLE_LANG_SAVE_AS = "blog/{slug}-{lang}"
 AUTHOR_SAVE_AS = ""
 AUTHOR_URL = ""
 MONTH_ARCHIVE_SAVE_AS = "posts/{date:%Y}/{date:%m}/index.html"
