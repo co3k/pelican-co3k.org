@@ -45,6 +45,7 @@ IE 9 および IE 10 向けに VB スクリプトを利用して JSON の内容�
 以下の画像は、手元の IE 9 で検証してみたときの様子です。検証時の User-Agent 文字列も記載してあります。
 
 .. image:: https://lh4.googleusercontent.com/-4F7hhK-jUq0/UZiE3H1HdoI/AAAAAAAABL8/Fg9h6Vu6V3A/s528/WS-0518-000042.JPG
+    :alt: IE 9 での検証
 
 問題が再現することと、 User-Agent 文字列が以下の形式であることが確認できます::
 
@@ -53,6 +54,7 @@ IE 9 および IE 10 向けに VB スクリプトを利用して JSON の内容�
 それでもって、以下の画像が、その IE 9 で、互換表示を有効にした場合のものです。当然この場合も問題は再現するわけですが……
 
 .. image:: https://lh3.googleusercontent.com/-D_gx28NSq7M/UZiEgrwAyvI/AAAAAAAABLw/K0a8EsGegM4/s523/WS-0518-000041.JPG
+    :alt: IE 9 (互換表示有効) での検証
 
 User-Agent 文字列が以下の形式に切り替わります::
 

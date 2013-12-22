@@ -9,6 +9,7 @@ iPhone で Yahoo! 知恵袋をブラウジングしていたところ、以下�
 
 .. image:: https://lh3.googleusercontent.com/-Y276_8WmHQQ/UaILiCCIUkI/AAAAAAAABPI/jQ4yhxOUEpw/s400/safari-search-engine-functions-03.jpg
     :target: https://lh3.googleusercontent.com/-Y276_8WmHQQ/UaILiCCIUkI/AAAAAAAABPI/jQ4yhxOUEpw/s800/safari-search-engine-functions-03.jpg
+    :alt: Yahoo! をデフォルトの検索エンジンにすることを促す表示がなされた様子
 
 「んん？　もちろん Yahoo! JAPAN はデフォルトの検索エンジンにはしていないが、どうやってそのことを知ったのだ？」と思い、 iPhone を MacBook Pro に繋いで、 OSX 側の Safari からいろいろと確認してみたところ、 http://m.chiebukuro.yahoo.co.jp/common/ChieSpSearchEngine.js にて、謎の関数 ``canSetSearchEngine()`` 、 ``setSearchEngine()`` 、 ``getSearchEngine()`` を読んでいることに気がつきました。ファッ！？　なんだこの関数群は。
 
@@ -16,11 +17,13 @@ iPhone で Yahoo! 知恵袋をブラウジングしていたところ、以下�
 
 .. image:: https://lh3.googleusercontent.com/-GhXmTyOAm4o/UaIGF93tSQI/AAAAAAAABOc/oPWW3fPPYTE/s400/safari-search-engine-functions-09.jpg
     :target: https://lh3.googleusercontent.com/-GhXmTyOAm4o/UaIGF93tSQI/AAAAAAAABOc/oPWW3fPPYTE/s800/safari-search-engine-functions-09.jpg
+    :alt: ボタンを押下してみた様子
 
 このようなダイアログが出てきました。早速設定値を確認すると、以下のようにちゃんとデフォルトの検索エンジンが「Yahoo!」になっていることがわかります。
 
 .. image:: https://lh6.googleusercontent.com/-SQXVihk3aq8/UaIGGcgOPtI/AAAAAAAABOY/V2ZsNK40N7s/s400/safari-search-engine-functions-11.jpg
     :target: https://lh6.googleusercontent.com/-SQXVihk3aq8/UaIGGcgOPtI/AAAAAAAABOY/V2ZsNK40N7s/s800/safari-search-engine-functions-11.jpg
+    :alt: デフォルトの検索エンジンが「Yahoo!」である様子
 
 しかし、この関数群は一体何者なのでしょうか？
 
@@ -57,6 +60,7 @@ canSetSearchEngine()
 
 .. image:: https://lh5.googleusercontent.com/-gQTSW-FUs7A/UaIGFe9ZtvI/AAAAAAAABN0/GKgc6-ff0p0/s400/safari-search-engine-functions-04.jpg
     :target: https://lh5.googleusercontent.com/-gQTSW-FUs7A/UaIGFe9ZtvI/AAAAAAAABN0/GKgc6-ff0p0/s800/safari-search-engine-functions-04.jpg
+    :alt: canSetSearchEngine() の実行結果
 
 setSearchEngine()
 -----------------
@@ -65,6 +69,7 @@ setSearchEngine()
 
 .. image:: https://lh5.googleusercontent.com/-WRb-aC0gCeQ/UaIGF_SfONI/AAAAAAAABOE/mv1lgecuJGU/s400/safari-search-engine-functions-07.jpg
     :target: https://lh5.googleusercontent.com/-WRb-aC0gCeQ/UaIGF_SfONI/AAAAAAAABOE/mv1lgecuJGU/s800/safari-search-engine-functions-07.jpg
+    :alt: setSearchEngine() の実行結果
 
 ここで「キャンセル」を押下すると、当然ながら設定変更はおこなわれません。
 
@@ -79,6 +84,7 @@ getSearchEngine()
 
 .. image:: https://lh5.googleusercontent.com/-feIN1DCUQ0Y/UaIGFQ5VzTI/AAAAAAAABNo/vT-cfJdUQRI/s400/safari-search-engine-functions-05.jpg
     :target: https://lh5.googleusercontent.com/-feIN1DCUQ0Y/UaIGFQ5VzTI/AAAAAAAABNo/vT-cfJdUQRI/s800/safari-search-engine-functions-05.jpg
+    :alt: getSearchEngine() の実行結果
 
 ちなみに、デフォルトの検索エンジンの設定値を取得する際には確認ダイアログは表示されず、また、 ``canSetSearchEngine()`` が ``false`` を返す状況においても ``getSearchEngine()`` は機能します。
 
@@ -101,16 +107,19 @@ JB 済みの環境では、 ``iFile`` という、 iOS 内部のファイルの�
 
 .. image:: https://lh6.googleusercontent.com/-oEYT6klSMec/UaIGGWga_3I/AAAAAAAABOQ/R03HIrvB98I/s400/safari-search-engine-functions-12.jpg
     :target: https://lh6.googleusercontent.com/-oEYT6klSMec/UaIGGWga_3I/AAAAAAAABOQ/R03HIrvB98I/s800/safari-search-engine-functions-12.jpg
+    :alt: iFile で XML を編集している様子
 
 ここから、「テキストビューアー」経由で、 ``Bing`` 用の設定値をコピー＆ペーストし、「プロパティビューア」経由で独自のものに変更をして……
 
 .. image:: https://lh4.googleusercontent.com/-Ho5rABOiY_w/UaIGHC7FlzI/AAAAAAAABOs/riWz4huTvRE/s400/safari-search-engine-functions-18.jpg
     :target: https://lh4.googleusercontent.com/-Ho5rABOiY_w/UaIGHC7FlzI/AAAAAAAABOs/riWz4huTvRE/s800/safari-search-engine-functions-18.jpg
+    :alt: コピペの様子
 
 このように検索エンジンとして設定可能なものを追加することができます。
 
 .. image:: https://lh6.googleusercontent.com/-u9faEmmvKwg/UaIGG-GkZzI/AAAAAAAABOk/4FovyL3s_QU/s400/safari-search-engine-functions-15.jpg
     :target: https://lh6.googleusercontent.com/-u9faEmmvKwg/UaIGG-GkZzI/AAAAAAAABOk/4FovyL3s_QU/s800/safari-search-engine-functions-15.jpg
+    :alt: 任意の検索エンジンを追加できた様子
 
 ここでは、検索機能を持つ企業内ポータルサイトを追加してみたという感じのイメージです。
 
@@ -118,6 +127,7 @@ JB 済みの環境では、 ``iFile`` という、 iOS 内部のファイルの�
 
 .. image:: https://lh6.googleusercontent.com/-PZf7zGtQBKA/UaIGGxZo6yI/AAAAAAAABOo/D6R4O1I-_rQ/s400/safari-search-engine-functions-17.jpg
     :target: https://lh6.googleusercontent.com/-PZf7zGtQBKA/UaIGGxZo6yI/AAAAAAAABOo/D6R4O1I-_rQ/s800/safari-search-engine-functions-17.jpg
+    :alt: 任意の検索エンジン設定時の getSearchEngine() の実行結果
 
 ``ScriptingName`` で指定した値を得ることができるようにありました。ここで個人や企業を特定されかねない値を指定してしまうと、ウェブサイトの運営者にこの値をこっそり取得されてしまう危険が生じるので注意が必要です。
 

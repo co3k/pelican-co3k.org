@@ -43,6 +43,7 @@ PC サイトビューアと EZ ブラウザの IP アドレスが統一される
 そして、 F001 の PC サイトビューアでこの PoC を実行した様子が以下です。
 
 .. image:: http://co3k.org/image/uploaded/f001_pcsv.png
+    :alt: F001 の PC サイトビューアでこの PoC を実行した様子
     :width: 320px
     :target: http://co3k.org/image/uploaded/f001_pcsv.png
 
@@ -80,6 +81,7 @@ IP アドレスとユーザーエージェント文字列が共に EZ ブラウ�
 以下の画像は、先ほどの PoC で定義している getRequest() という関数をロケーションバーから叩いたときの様子です。
 
 .. image:: http://co3k.org/image/uploaded/f001_location.png
+    :alt: 先ほどの PoC で定義している getRequest() という関数をロケーションバーから叩いたときの様子
     :width: 320px
     :target: http://co3k.org/image/uploaded/f001_location.png
 
@@ -231,6 +233,7 @@ HTTP サーバとしての機能を抱えた Java のサーブレットコンテ
 ところで、手元の Firefox (10.0a2) で Gist に置いた PoC を試すと、 User-Agent の書き換えのみが拒否され、 User_Agent や X-Up-Subno などのヘッダは送信されます。ブラウザベンダーが「これは好き勝手に送信されるとよくない」と判断したヘッダの送信を禁止しているためです。このことは、 `Browser Security Handbook <http://code.google.com/p/browsersec>`_ の `調査結果 <http://code.google.com/p/browsersec/wiki/Part2#Same-origin_policy_for_XMLHttpRequest>`_ にまとまっています。以下の表がそれです。
 
 .. image:: http://co3k.org/image/uploaded/xhr_denied_headers.png
+    :alt: Browser Security Handbook から引用した表
     :width: 480px
     :target: http://co3k.org/image/uploaded/xhr_denied_headers.png
 

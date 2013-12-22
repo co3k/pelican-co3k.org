@@ -55,15 +55,18 @@ CakePHP の PHP コード実行の脆弱性を使って CakePHP を焦がす
 このスクリプト中の以下の部分を、環境に合わせて書き換えて……
 
 .. image:: http://co3k.org/cache/img/png/w600_h600/a_1_a416c3a35af5690bda5e8b1622d83e098de28738_png.png
+    :alt: exploit code の変更対象部分
 
 実行するだけ！
 
 .. image:: http://co3k.org/cache/img/png/w600_h600/a_1_d400b5d79146c0abd260c8a75f5fac4a0a7e8b9e_png.png
+    :alt: exploit code の実行用コマンド
 
 はい、 config/database.php の中身が閲覧できてしまいました＞＜
 
 .. image:: http://co3k.org/cache/img/png/w240_h320/a_1_8bab4dc76d929bebd562d412303555830530bb47_png.png
     :target: http://co3k.org/cache/img/png/w_h/a_1_8bab4dc76d929bebd562d412303555830530bb47_png.png
+    :alt: exploit code の実行結果
 
 ------
 まとめ
