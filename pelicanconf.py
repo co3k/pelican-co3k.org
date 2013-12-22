@@ -30,6 +30,7 @@ AUTHOR_URL = ""
 MONTH_ARCHIVE_SAVE_AS = "posts/{date:%Y}/{date:%m}/index.html"
 
 GITHUB_REPOSITORY = "http://github.com/ebihara/pelican-co3k.org/"
+STATIC_PATHS = ["images", "image"]
 
 # Uncomment following line if you want document-relative URLs when developing
 #RELATIVE_URLS = True
