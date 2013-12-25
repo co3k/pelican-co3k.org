@@ -3,7 +3,8 @@
 body {
   background-color: #fff;
   color: #333;
-  word-break: break-all;
+  word-break: normal;
+  word-wrap: break-word;
 }
 
 body a {
