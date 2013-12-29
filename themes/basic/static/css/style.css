@@ -183,3 +183,17 @@ th, td {
     font-weight: normal;
     text-shadow: -1px 1px 0 rgba(230, 230, 230, 1);
 }
+
+@media only screen and (max-device-width: 760px) {
+    body {
+        font-size: 14px;
+    }
+
+    #content {
+        margin: 0;
+    }
+
+    .entry-content {
+        margin: 0;
+    }
+}
