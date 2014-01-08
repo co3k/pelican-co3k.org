@@ -164,6 +164,7 @@ table.footnote th, table.footnote tr, table.footnote td {
 }
 
 pre {
+    font-size: 12px;
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow: auto;
@@ -197,6 +198,12 @@ th, td {
         margin: 0;
     }
 }
+
+.highlight {
+    max-height: 480px;
+    overflow-y: scroll;
+}
+
 .hll { background-color: #ffffcc }
 .c { color: #408080; font-style: italic } /* Comment */
 .err { border: 1px solid #FF0000 } /* Error */
