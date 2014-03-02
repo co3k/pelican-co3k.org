@@ -204,6 +204,10 @@ th, td {
     overflow-y: scroll;
 }
 
+em {
+    color: #0490A9;
+}
+
 .hll { background-color: #ffffcc }
 .c { color: #408080; font-style: italic } /* Comment */
 .err { border: 1px solid #FF0000 } /* Error */
