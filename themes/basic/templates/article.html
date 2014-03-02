@@ -14,7 +14,7 @@
   {% endfor %}
 {% endblock %}
 
-{% block title %}{{ super() }} - Blog - {{ article.title|striptags }}{% endblock %}
+{% block title %}{{ article.title|striptags }} - {{ super() }}{% endblock %}
 
 {% block content %}
 <section id="content" class="body">
