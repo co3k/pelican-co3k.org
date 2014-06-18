@@ -12,7 +12,7 @@ Zend Framework の XXE 脆弱性対策 (ZF2014-01) と zendframework/ZendXml の
 ZF2014-01: Potential XXE/XEE attacks using PHP functions: simplexml_load_*, DOMDocument::loadXML, and xml_parse
     http://framework.zend.com/security/advisory/ZF2014-01
 
-僕自信は Zend Framework を使っていなかったので、「あーなんか XXE [#]_ への対策漏れしている場所とかあったのかなー」とかなんとかでよく読まずにスルーしていたのですが、最近になって調べてみたところどうもそういう話ではなく、 `PHP::Bug #64938 <https://bugs.php.net/bug.php?id=64938>`_ のバグの影響で PHP-FPM 利用時に ``libxml_disable_entity_loader()`` が効かない (より正確には、設定値がスレッド間で共有されてしまう) ことがあるという問題への対策ということのようで。
+僕自身は Zend Framework を使っていなかったので、「あーなんか XXE [#]_ への対策漏れしている場所とかあったのかなー」とかなんとかでよく読まずにスルーしていたのですが、最近になって調べてみたところどうもそういう話ではなく、 `PHP::Bug #64938 <https://bugs.php.net/bug.php?id=64938>`_ のバグの影響で PHP-FPM 利用時に ``libxml_disable_entity_loader()`` が効かない (より正確には、設定値がスレッド間で共有されてしまう) ことがあるという問題への対策ということのようで。
 
 PHP における XXE 対策としては、一般的に、外部エンティティローダの利用を意図しない XML 読み込み時に ``libxml_disable_entity_loader(true)`` のコールによって外部エンティティローダを無効にし、 XML の読み込みが完了した後には元の設定値に戻す、というようなことがおこなわれています。って言葉で説明してもわかりにくいですね。ざっくりしたコード例を示すと以下のようになります。
 
