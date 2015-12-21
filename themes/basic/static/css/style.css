@@ -180,9 +180,12 @@ th, td {
   vertical-align: middle;
 }
 
-#content h1, h2, h3, h4, h5, h6 {
-    font-weight: normal;
+#content h1, #content h2, #content h3, #content h4, #content h5, #content h6 {
     text-shadow: -1px 1px 0 rgba(230, 230, 230, 1);
+}
+
+#content h1, h2.entry-title {
+    font-weight: normal;
 }
 
 @media only screen and (max-device-width: 760px) {
@@ -206,6 +209,11 @@ th, td {
 
 em {
     color: #0490A9;
+}
+
+#content img {
+    max-width: 100%;
+    max-height: 640px;
 }
 
 .hll { background-color: #ffffcc }
