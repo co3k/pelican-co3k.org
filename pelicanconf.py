@@ -20,7 +20,7 @@ DEFAULT_PAGINATION = 20
 SUMMARY_MAX_LENGTH = 25
 
 THEME = "themes/basic"
-MENUITEMS = [("About", "/"), ("Blog", "/category/blog.html")]
+MENUITEMS = [("About", "/"), ("Blog", "/category/blog.html"), ("Reported Vulnerabilities", "/pages/reported-vulnerabilities.html")]
 ARTICLE_SAVE_AS = "blog/{slug}"
 ARTICLE_URL = "blog/{slug}"
 ARTICLE_LANG_URL = "blog/{slug}-{lang}"
