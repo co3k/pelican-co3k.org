@@ -7,22 +7,22 @@
 
 本日、秀和システム様より『symfony 1.4によるWebアプリケーション開発』が発売されました！
 
-.. image:: http://co3k.org/cache/img/png/w240_h320/a_1_789752607ac0127bd051c75482005c8bb7f1a03e_jpg.jpg
-    :target: http://co3k.org/cache/img/jpg/w_h/a_1_789752607ac0127bd051c75482005c8bb7f1a03e_jpg.jpg
+.. image:: /image/cache/img/png/w240_h320/a_1_789752607ac0127bd051c75482005c8bb7f1a03e_jpg.jpg
+    :target: /image/cache/img/jpg/w_h/a_1_789752607ac0127bd051c75482005c8bb7f1a03e_jpg.jpg
     :alt: 表紙
 
 日本 Symfony ユーザー会著ということで、いろいろな方々が本書の執筆に参加されていますが、実は海老原も 12 章の「大規模なソフトウェアへの応用」の執筆を担当させていただきました！　ということで以下軽く紹介させてください。
 （本書についての情報はサポートサイト http://books.symfony.gr.jp/14book/ をご覧ください）
 
-.. image:: http://co3k.org/cache/img/png/w240_h320/a_1_0c8272dd88640d448b01101c588b673dad004997_jpg.jpg
-    :target: http://co3k.org/cache/img/jpg/w_h/a_1_0c8272dd88640d448b01101c588b673dad004997_jpg.jpg
+.. image:: /image/cache/img/png/w240_h320/a_1_0c8272dd88640d448b01101c588b673dad004997_jpg.jpg
+    :target: /image/cache/img/jpg/w_h/a_1_0c8272dd88640d448b01101c588b673dad004997_jpg.jpg
     :alt: 本屋で陳列された様子
 
 震災と重なって流通が安定していないなかの出版ということもあってか、それなりに大きな書店でもまだ並べられていないところがあったりするようですね（Amazon.co.jp でも在庫切れ）。
 著者献本いただけるとのことなのですが、早く手に入れたくて、池袋ジュンク堂で見つけたそばから購入してしまいました（笑）。
 
-.. image:: http://co3k.org/cache/img/png/w240_h320/a_1_526e05d1db7111ded775eb8edd27ee7130b4606f_jpg.jpg
-    :target: http://co3k.org/cache/img/jpg/w_h/a_1_526e05d1db7111ded775eb8edd27ee7130b4606f_jpg.jpg
+.. image:: /image/cache/img/png/w240_h320/a_1_526e05d1db7111ded775eb8edd27ee7130b4606f_jpg.jpg
+    :target: /image/cache/img/jpg/w_h/a_1_526e05d1db7111ded775eb8edd27ee7130b4606f_jpg.jpg
     :alt: 海老原執筆部分
 
 12 章では、 OpenPNE 3 を題材にし、 symfony の活用方法として紹介できそうなものをいくつかピックアップし、掘り下げて行くような形で書かせていただきました。

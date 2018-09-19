@@ -9,7 +9,7 @@
 
 .. raw:: html
 
-    <iframe src="http://rcm-fe.amazon-adsystem.com/e/cm?lt1=_blank&bc1=000000&IS2=1&bg1=FFFFFF&fc1=000000&lc1=0000FF&t=balloonflower-22&o=9&p=8&l=as4&m=amazon&f=ifr&ref=ss_til&asins=4774162116" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
+    <iframe src="https://ws-fe.assoc-amazon.com/widgets/cm?lt1=_blank&bc1=000000&IS2=1&bg1=FFFFFF&fc1=000000&lc1=0000FF&t=balloonflower-22&o=9&p=8&l=as4&m=amazon&f=ifr&ref=ss_til&asins=4774162116" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
 
 anatoo さんがハイブリッドアプリに関して経験されてきたであろうあらゆることがぎっしり詰まっている一冊でした。せっかくいただいたものですし、みなさんにも是非オススメさせていただきたく書評なぞを書いてみようと思います。
 

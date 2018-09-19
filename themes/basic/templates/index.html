@@ -7,7 +7,6 @@
 
 {% block head %}
 {{ super() }}
-   <link href="http://coderwall.com/stylesheets/jquery.coderwall.css" media="all" rel="stylesheet" type="text/css">
 {% endblock %}
 
 <img alt="A photo of Kousuke Ebihara" src="/images/co3k.jpg" />
@@ -29,7 +28,7 @@
 </ul>
 <div class="section" id="published-books">
 <h2>Published books</h2>
-<a class="reference external image-reference" href="http://www.amazon.co.jp/exec/obidos/ASIN/4798029343/"><img alt="symfony-1-4によるWebアプリケーション開発―オープンソース徹底活用" src="http://ecx.images-amazon.com/images/I/51TqK-ZdqCL._SX160__PC_.jpg" /></a>
+<a class="reference external" href="http://www.amazon.co.jp/exec/obidos/ASIN/4798029343/">『symfony-1-4によるWebアプリケーション開発―オープンソース徹底活用』</a> (共著)
 </div>
 <div class="section" id="contact-information">
 <h2>Contact information</h2>
@@ -58,18 +57,5 @@
 </ul>
 </div>
 
-<script type="text/javascript">
-function display_coderwall(json)
-{
-    $container = $("#coderwall-badges");
-    var badges = json["data"]["badges"];
-    for (var i = 0; i < badges.length; i++) {
-        $img = $("<img src='' width='50px' height='50px' />");
-        $img.attr("src", badges[i]["badge"]);
-        $container.prepend($img);
-    }
-}
-</script>
-<script src="https://coderwall.com/ebihara.json?callback=display_coderwall"></script>
 </section><!-- /#content -->
 {% endblock content %}

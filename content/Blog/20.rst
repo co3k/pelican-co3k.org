@@ -82,33 +82,33 @@ Set-Cookie ヘッダと Content-Type ヘッダを送信し、 headers_list() に
 
 では、確認してみましょう。このスクリプトに対して HTTPS でアクセスしてみます。
 
-.. image:: http://co3k.org/image/uploaded/au_cookie_https_first.png
+.. image:: /image/uploaded/au_cookie_https_first.png
     :alt: HTTPS での初回のアクセス結果
     :width: 320px
-    :target: http://co3k.org/image/uploaded/au_cookie_https_first.png
+    :target: /image/uploaded/au_cookie_https_first.png
 
 そして下の「Reload」からリロードします。スクリプト実行時のタイムスタンプが GET パラメータとして含まれるので、ブラウザキャッシュが使われたりするようなことはないはずです。
 
-.. image:: http://co3k.org/image/uploaded/au_cookie_https_second.png
+.. image:: /image/uploaded/au_cookie_https_second.png
     :alt: HTTPS での 2 回目のアクセス結果
     :width: 320px
-    :target: http://co3k.org/image/uploaded/au_cookie_https_second.png
+    :target: /image/uploaded/au_cookie_https_second.png
 
 Set-Cookie を受け取ったはずなのに、 $_COOKIE は依然として空のままであることがわかります。出力されている現在日時が先ほどと異なるので、ブラウザキャッシュが出力されているわけではなさそうなこともわかります。
 
 では続いて、 HTTP でもアクセスしてみます (「文字サイズを変えれば全部映るじゃん！」ということに気づいて端末側の文字サイズ変えました。あと写真の撮り方がだんだん適当になってますが気にしないで)。
 
-.. image:: http://co3k.org/image/uploaded/au_cookie_http_first.png
+.. image:: /image/uploaded/au_cookie_http_first.png
     :alt: HTTP での 1 回目のアクセス結果
     :width: 320px
-    :target: http://co3k.org/image/uploaded/au_cookie_http_first.png
+    :target: /image/uploaded/au_cookie_http_first.png
 
 先ほどと同様に、「Reload」から再度アクセスします。
 
-.. image:: http://co3k.org/image/uploaded/au_cookie_http_second.png
+.. image:: /image/uploaded/au_cookie_http_second.png
     :alt: HTTP での 2 回目のアクセス結果
     :width: 320px
-    :target: http://co3k.org/image/uploaded/au_cookie_http_second.png
+    :target: /image/uploaded/au_cookie_http_second.png
 
 こちらは意図通り、 $_COOKIE に Set-Cookie した内容が格納されています。
 

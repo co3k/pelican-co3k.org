@@ -43,8 +43,8 @@
 
 一般的なオートロックマンションを想定した図が以下のとおりです。
 
-.. image:: http://evil.co3k.org/handmade-biometric-authentication-autolock.jpg
-    :target: http://evil.co3k.org/handmade-biometric-authentication-autolock.jpg
+.. image:: https://evil.co3k.org/handmade-biometric-authentication-autolock.jpg
+    :target: https://evil.co3k.org/handmade-biometric-authentication-autolock.jpg
 
 オートロックと玄関ドアのふたつの認証機構によって家が守られていることがわかります。が、オートロックも玄関ドアも物理的なシリンダー錠用の鍵によって解錠することができますから、これは「所有」といった単一要素のみによる複数回の認証であるということになります。
 
@@ -77,8 +77,8 @@
 
 以下の図のようなものを作ります。
 
-.. image:: http://evil.co3k.org/handmade-biometric-authentication-dog-authentication.jpg
-    :target: http://evil.co3k.org/handmade-biometric-authentication-dog-authentication.jpg
+.. image:: https://evil.co3k.org/handmade-biometric-authentication-dog-authentication.jpg
+    :target: https://evil.co3k.org/handmade-biometric-authentication-dog-authentication.jpg
 
 我が家の犬 (名前は教えてあげないよ) は知らない人が入ってくるとよく吠えます。持ち前の耳のよさでドアの開閉状況を素早くキャッチし、なんらかの根拠に基づき人間の素性を確認し、そして見知らぬ人間であるとわかるとがむしゃらに吠えまくるのです。さながら番犬のようですね。
 
@@ -163,8 +163,8 @@ https://github.com/co3k/dog-authenticator
 攻撃者が近くに犬を繋ぐことによる DoS
 ````````````````````````````````````
 
-.. image:: http://evil.co3k.org/handmade-biometric-authentication-dog-authentication-attacker-dog-dos.jpg
-    :target: http://evil.co3k.org/handmade-biometric-authentication-dog-authentication-attacker-dog-dos.jpg
+.. image:: https://evil.co3k.org/handmade-biometric-authentication-dog-authentication-attacker-dog-dos.jpg
+    :target: https://evil.co3k.org/handmade-biometric-authentication-dog-authentication-attacker-dog-dos.jpg
 
 攻撃者が近くに犬を繋ぐことにより、その犬の鳴き声に認証機器が反応してしまう可能性があります。果たして犬にも人と同じように声紋というものがあるのかどうか、寡聞にして知らないのですが、一般家庭でカジュアルに実装できる範囲を超えそうな気がしています。
 
@@ -173,8 +173,8 @@ https://github.com/co3k/dog-authenticator
 犬が別な目的で吠えることによる DoS
 ``````````````````````````````````
 
-.. image:: http://evil.co3k.org/handmade-biometric-authentication-dog-authentication-my-dog-dos.jpg
-    :target: http://evil.co3k.org/handmade-biometric-authentication-dog-authentication-my-dog-dos.jpg
+.. image:: https://evil.co3k.org/handmade-biometric-authentication-dog-authentication-my-dog-dos.jpg
+    :target: https://evil.co3k.org/handmade-biometric-authentication-dog-authentication-my-dog-dos.jpg
 
 というか前述の動画の鳴き声なのですが、検証のために僕が外に出たことによって鳴いてしまっています。したがって、そのタイミング次第では、家を出ようとすると犬が吠え鍵がかかり出られなくなる、いわば外の世界に対する DoS になりかねません。
 

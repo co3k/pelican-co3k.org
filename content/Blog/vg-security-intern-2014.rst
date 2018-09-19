@@ -15,8 +15,8 @@ Treasure 全体の様子は既に VOYAGE GROUP エンジニアブログにて `�
 
 ありがたいことに Treasure の講義中はうちのクルーも忙しい業務の合間をみて見学に来てくれていて、なにやら Slack で実況的なことがされていました。そのなかに端的に講義の様子を伝えてくれそうな発言があったのでご紹介します。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-jewel.png
-    :target: http://evil.co3k.org/vg-intro-web-security-jewel.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-jewel.png
+    :target: https://evil.co3k.org/vg-intro-web-security-jewel.png
 
 講義の概要
 ==========
@@ -62,17 +62,17 @@ Treasure 全体の様子は既に VOYAGE GROUP エンジニアブログにて `�
 
 まず、自分の周りで起きた情報セキュリティ事故についてディスカッションしてもらうことにしました。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-001.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-001.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-001.png
+    :target: https://evil.co3k.org/vg-intro-web-security-001.png
 
 こんなふわっとしたお題でディスカッションになるかなーなどとほんのり心配だったのですが、さすが情報化社会というか、最近の若者はデジタルにネイティブしていることもあって、大学内システムのあれこれであったり、自らのメールアカウントに不正アクセスがあった話など、非常に生々しいエピソードが聞こえてくることもありました。
 
 それから更に世の中全体に視野を広げて、世間で起きた過去のセキュリティ事故に関して事例をたっぷり交えて解説しました (2005 年から 2014 年まで)。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-002.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-002.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-002.png
+    :target: https://evil.co3k.org/vg-intro-web-security-002.png
 
 ほかにも、個々の脆弱性解説の場面で実際に僕が見つけた脆弱性に関する話題を盛り込んだりと、「現実の話をしているんだよ」という点についてはできるだけ強調するように心がけました。
 
@@ -87,15 +87,15 @@ Web アプリケーションを開発するにあたって、テキストベー�
 
 京都での講義ではまず、この点について触れることにしました。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-003.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-003.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-003.png
+    :target: https://evil.co3k.org/vg-intro-web-security-003.png
 
 そのうえでエスケープという手法の存在について触れます。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-004.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-004.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-004.png
+    :target: https://evil.co3k.org/vg-intro-web-security-004.png
 
 ここには `htmlspecialchars()` も `0 OR 0 = 0; --` も出てきません。
 
@@ -107,33 +107,33 @@ Web アプリケーションを開発するにあたって、テキストベー�
 
 そういう前提のもと、 XSS について理解するには、構文についての知識が必要ですし、
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-005.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-005.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-005.png
+    :target: https://evil.co3k.org/vg-intro-web-security-005.png
 
 エスケープ手法に関する知識も必要です。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-006.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-006.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-006.png
+    :target: https://evil.co3k.org/vg-intro-web-security-006.png
 
 攻撃の結果、どういう影響が文章構造に及ぶかというのも知っておかなければなりません。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-007.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-007.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-007.png
+    :target: https://evil.co3k.org/vg-intro-web-security-007.png
 
 もちろんスクリプトの実行コンテキストに関する理解も必要です。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-008.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-008.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-008.png
+    :target: https://evil.co3k.org/vg-intro-web-security-008.png
 
 複数の文脈を含有する場合の処理の難しさについても知っておく必要があります。 Vue.js のデータバインディング構文を含む HTML モドキを PHP で動的に構築して出力するなんてもってのほかですね。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-009.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-009.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-009.png
+    :target: https://evil.co3k.org/vg-intro-web-security-009.png
 
 こういうことをひたすらにコツコツやろうとした結果、膨大な講義資料と、 Treasure 用講義資料は 136 ページ、 1 day インターン用講義資料は 186 ページという大ボリュームになってしまいました。はじめる前は不安で仕方がなかったのですが、実際にはなんとか受け止めてもらえたようで一安心です。
 
@@ -154,13 +154,13 @@ Treasure では少なからずセキュリティ脆弱性に対する攻撃手�
 
 そういうことで、あまりにも心を痛めすぎて、とうとう自分が出張ってでも「これはよくないことなんだよ」という役割を担う機運だと思ってえいやと講義に組み入れてしまったという次第になります。まあ、なんというか、いい形で伝わっていれば幸いですというほかないですね。
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-010.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-010.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-010.png
+    :target: https://evil.co3k.org/vg-intro-web-security-010.png
 
-.. image:: http://evil.co3k.org/vg-intro-web-security-011.png
+.. image:: https://evil.co3k.org/vg-intro-web-security-011.png
     :width: 40%
-    :target: http://evil.co3k.org/vg-intro-web-security-011.png
+    :target: https://evil.co3k.org/vg-intro-web-security-011.png
 
 来年どうしましょう
 ==================
