@@ -15,4 +15,6 @@ Background.change = function () {
     document.body.style.background = 'url(' + Background.prefix + Background.list[index] + ') no-repeat fixed right bottom';
 };
 
-Background.change();
+if (window.screen.width > 980) {
+  Background.change();
+}
