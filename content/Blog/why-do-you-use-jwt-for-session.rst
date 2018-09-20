@@ -41,7 +41,7 @@
 TL;DR
 ------
 
-* `Ruby on Rails のセッション管理機構 cookie store と同じ問題を抱える <#rails-cookie-store>`_
+* `Ruby on Rails のデフォルトのセッション管理機構 cookie store と同じ問題を抱える <#rails-cookie-store>`_
     * `サーバ側でのセッション無効化ができない <#it-cant-invalidate-session-from-server>`_
     * `ユーザの能動的な「ログアウト」はセッションを失効させない <#logout-action-doesnt-revoke-session>`_
     * `有効期限を明示的にペイロードに含まない限り、セッションが恒久的に有効になる <#you-should-include-exp-in-its-payload>`_
@@ -58,8 +58,8 @@ TL;DR
 
 .. _rails-cookie-store:
 
-Ruby on Rails のセッション管理機構 cookie store と同じ問題を抱える
-------------------------------------------------------------------
+Ruby on Rails のデフォルトのセッション管理機構 cookie store と同じ問題を抱える
+-------------------------------------------------------------------------------
 
 みんな cookie store は避けるのにどうして同じ問題を持つ JWT をセッション継続に使っちゃうんだろう？　むしろ cookie store を強い意志で使ってくれていれば、今頃はノウハウが蓄積され、JWT による妥当なセッション継続の実装が幅を効かせていたに違いない。
 
