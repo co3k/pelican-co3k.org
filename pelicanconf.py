@@ -12,7 +12,7 @@ DEFAULT_LANG = u'ja'
 DEFAULT_DATE_FORMAT = '%Y-%m-%d'
 
 # Feed generation is usually not desired when developing
-FEED_ALL_ATOM = None
+FEED_ALL_ATOM = 'feeds/blog.atom'
 CATEGORY_FEED_ATOM = None
 TRANSLATION_FEED_ATOM = None
 
